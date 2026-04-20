@@ -1,26 +1,17 @@
 CREATE PROCEDURE [dbo].[pa_PRSD_ConsultarProduccionPlan_Mensual]
-    @FechaInicio DATE = NULL,
-    @FechaFin DATE = NULL,
-    @NoDepto INT = 1
 AS
 BEGIN
     SET NOCOUNT ON;
 
-    -- 🔥 Fechas automáticas (Año actual)
-    IF @FechaInicio IS NULL
-        SET @FechaInicio = DATEFROMPARTS(YEAR(GETDATE()), 1, 1);
+    DECLARE @FechaInicio DATE;
+    DECLARE @FechaFin DATE;
 
-    IF @FechaFin IS NULL
-        SET @FechaFin = GETDATE();
-
-    IF @FechaInicio > @FechaFin
-    BEGIN
-        RAISERROR('La fecha de inicio no puede ser mayor que la fecha de fin.', 16, 1);
-        RETURN;
-    END;
+    -- 🔥 Año actual automático
+    SET @FechaInicio = DATEFROMPARTS(YEAR(GETDATE()), 1, 1);
+    SET @FechaFin = GETDATE();
 
     /* =========================================
-       1. PLAN DE PRODUCCIÓN (POR MES)
+       1. PLAN DE PRODUCCIÓN
     ========================================= */
     WITH PlanMensual AS (
         SELECT 
@@ -54,7 +45,10 @@ BEGIN
             ON tblBPE.idpresentacionenc = tblBPS.idpresentacionenc
         INNER JOIN TLX004MXDB.dbo.tblEncabezadoBitacora tblEB
             ON tblEB.IdEncabezadoBItacora = tblBPE.folio
+        INNER JOIN TLX009MXDB.dbo.tblMaquinasCombo tblMC
+            ON tblMC.NoMaquina = tblEB.NoMaquina
         WHERE tblEB.Fecha BETWEEN @FechaInicio AND @FechaFin
+            AND tblMC.NoDepto IN (1, 24, 25)
             AND tblBPE.presentacion NOT IN ('3421547','3421425','3422046','3421548')
             AND tblBPS.id = (
                 SELECT MAX(id)
@@ -92,7 +86,7 @@ BEGIN
         INNER JOIN TLX009MXDB.dbo.tblMaquinasCombo tblMC
             ON tblMC.NoMaquina = tblEB.NoMaquina
         WHERE tblEB.Fecha BETWEEN @FechaInicio AND @FechaFin
-            AND tblMC.NoDepto = @NoDepto
+            AND tblMC.NoDepto IN (1, 24, 25)
             AND tblVEC.NoClave NOT IN ('3421547','3421425','3422046','3421548')
     ),
 
@@ -113,7 +107,7 @@ BEGIN
     )
 
     /* =========================================
-       4. RESULTADO FINAL
+       RESULTADO FINAL
     ========================================= */
     SELECT 
         COALESCE(P.Anio, S.Anio, R.Anio) AS Anio,
@@ -168,7 +162,7 @@ BEGIN
     LEFT JOIN TLX004MXDB.dbo.tblProduccionOperaciones PO
         ON PO.idOperacion = V.Categoria
 
-    WHERE (D.NoDepto = @NoDepto OR D.NoDepto IS NULL)
+    WHERE (D.NoDepto IN (1, 24, 25) OR D.NoDepto IS NULL)
 
     ORDER BY 
         Anio,
