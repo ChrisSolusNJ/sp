@@ -32,3 +32,4 @@ PlanMensual AS (
         AND UC.MaxConfiguracion = tblPP.configuracion
     WHERE tblPP.fecha BETWEEN @FechaInicio AND @FechaFin
 )
+
