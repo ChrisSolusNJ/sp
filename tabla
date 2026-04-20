@@ -1,0 +1,26 @@
+<td contenteditable="true" 
+    class="editable"
+    onblur="getCellValueTelas(this)"
+    onkeydown="handleKeyDownTelas(event, this)">
+
+handleKeyDownTelas(e, cell) {
+  if (e.key === "Enter") {
+    e.preventDefault(); // evita salto de línea
+    cell.blur(); // 🔥 fuerza el blur
+  }
+}
+
+const tabla = document.getElementById(domtbl);
+
+tabla.addEventListener("focusout", (e) => {
+  if (e.target.classList.contains("editable")) {
+    this.getCellValueTelas(e.target);
+  }
+});
+
+tabla.addEventListener("keydown", (e) => {
+  if (e.target.classList.contains("editable") && e.key === "Enter") {
+    e.preventDefault();
+    e.target.blur(); // 🔥 dispara focusout
+  }
+});
