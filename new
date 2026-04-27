@@ -1,13 +1,10 @@
-Ok ahora me da este error
-
-sectionpresentaciones.js:156 Uncaught (in promise) SyntaxError: Failed to execute 'querySelector' on 'Document': '#[object HTMLTableSectionElement] .btn-agregar-bajada' is not a valid selector.
-    at BitPresentaciones.agregarFilaBajada (sectionpresentaciones.js:156:19)
-    at BitPresentaciones.cargarNuevoRegistroSpooler (sectionpresentaciones.js:126:10)
-    at async BitPresentaciones.savePresentacionSpooler (sectionpresentaciones.js:63:9)
-
-Aqui
-  agregarFilaBajada(domtbl2, datosBajada) {
-    console.log(domtbl2);
+agregarFilaBajada(domtbl2, datosBajada) {
+    console.log("domtbl2 es:", domtbl2);
+    console.log("Tipo de domtbl2:", typeof domtbl2);
+    
+    // domtbl2 ya es un elemento del DOM (el tbody)
+    const tbody = domtbl2; // Porque ya es el elemento, no el ID
+    
     const body2 = `
         <tr data-id="${datosBajada.idBajada}">
             <td contenteditable="true" class="editable"
@@ -29,16 +26,16 @@ Aqui
         </tr>
     `;
     
-    // Agregar la nueva fila al final de la tabla existente
-    domtbl2.insertAdjacentHTML('beforeend', body2);
+    // Agregar la nueva fila directamente al tbody
+    tbody.insertAdjacentHTML('beforeend', body2);
     
-    // Agregar botón si es necesario
-    if (!document.querySelector(`#${domtbl2} .btn-agregar-bajada`)) {
+    // Buscar el botón dentro del mismo tbody
+    if (!tbody.querySelector('.btn-agregar-bajada')) {
         const btnRow = `
-            <tr>
+            <tr class="btn-agregar-bajada-row">
                 <td colspan="8" class="text-center">
                     <button class="btn btn-sm bg-target btn-agregar-bajada" 
-                            onclick="agregarBajadaRollo(${datosBajada.folioBitacora}, ${datosBajada.clave}, ${datosBajada.notbl}, '${domtbl2}')">
+                            onclick="agregarBajadaRollo(${datosBajada.folioBitacora}, ${datosBajada.clave}, ${datosBajada.notbl}, '${domtbl2.id}')">
                         <i class="fas fa-plus"></i> Agregar Bajada
                     </button>
                 </td>
@@ -47,7 +44,3 @@ Aqui
         tbody.insertAdjacentHTML('beforeend', btnRow);
     }
 }
-
-
-Aqui
-
