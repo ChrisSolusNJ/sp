@@ -1,98 +1,35 @@
-async cargarNuevoRegistroSpooler(folio, notbl, domtbl, domtbl2, nuevoId) {
-    const data = new FormData();
-    data.append("folio", folio);
-    data.append("notbl", notbl);
-    data.append("nuevoId", nuevoId); // Enviar el ID específico
+function cargarRegistroSpooler() {
+    $folio = $_POST["folio"];
+    $notbl = $_POST["notbl"];
+    $nuevoId = $_POST["nuevoId"];
     
-    const respuestaraw = await fetch(
-        "php/presentacion.php?cargarRegistroSpooler", // Nuevo endpoint
-        {
-            method: "POST",
-            body: data,
-        },
+    // Respuesta con datos en cero para el nuevo registro
+    $response = array(
+        "rollos" => array(
+            array(
+                "idSU" => 0,
+                "NoRollo" => 0,
+                "KGTotalRollo" => 0,
+                "MetrosLineales" => 0
+            )
+        ),
+        "bajada" => array(
+            "idBajada" => 0,
+            "NoBajada" => 0,
+            "bobinas" => 0,
+            "ptcb" => 0,
+            "mlBajada" => 0,
+            "mm2Bajada" => 0,
+            "ancho" => 0,
+            "kgmb" => 0,
+            "pesoBase" => 0,
+            "folioBitacora" => $folio,
+            "clave" => 0,
+            "notbl" => $notbl
+        ),
+        "idRollo" => $nuevoId
     );
-    const respuesta = await respuestaraw.json();
     
-    // Construir tabla 1 con los datos en cero del nuevo registro
-    let body = "";
-    let acckg = 0;
-    let accml = 0;
-    
-    respuesta.rollos.forEach((newelement) => {
-        acckg = Math.round((acckg + newelement.KGTotalRollo) * 1000) / 1000;
-        accml = Math.round((accml + newelement.MetrosLineales) * 1000) / 1000;
-        
-        body += `
-            <tr data-id="${newelement.idSU}">
-                <td contenteditable="true" class="editable" onblur="getCellValueRollos(this)" onkeydown="handleKeyDownTelas(event, this)">${newelement.NoRollo || 0}</td>
-                <td>${newelement.KGTotalRollo || 0}</td>
-                <td hidden>${acckg}</td>
-                <td contenteditable="true" class="editable" onblur="getCellValueMetrosLineales(this)" onkeydown="handleKeyDownTelas(event, this)">${newelement.MetrosLineales || 0}</td>
-                <td hidden>${accml}</td>
-            </tr>
-        `;
-    });
-    
-    body += `<tr>
-                <td class="fw-bold">Total</td>
-                <td>${acckg}</td>
-                <td>${accml}</td>
-            </tr>`;
-    body += `<tr>
-                <td colspan="6" class="text-center">
-                    <button class="btn btn-sm bg-target" onclick="agregarRollo(${respuesta.idRollo})" this.disabled=true;>
-                        <i class="fas fa-plus"></i> Agregar Rollo
-                    </button>
-                </td>
-            </tr>`;
-    
-    // Cargar SOLO la tabla 1 con el nuevo registro
-    document.getElementById(domtbl).innerHTML = body;
-    
-    // AGREGAR nueva fila a la tabla 2 (sin borrar la existente)
-    this.agregarFilaBajada(domtbl2, respuesta.bajada);
-}
-
-
-agregarFilaBajada(domtbl2, datosBajada) {
-    const body2 = `
-        <tr data-id="${datosBajada.idBajada}">
-            <td contenteditable="true" class="editable"
-                onblur="getCellValueBobinas(this)"
-                onkeydown="handleKeyDownTelas(event, this)">
-                ${datosBajada.NoBajada || 0}
-            </td>
-            <td contenteditable="true" class="editable"
-                onblur="getCellValueBobinas(this)"
-                onkeydown="handleKeyDownTelas(event, this)">
-                ${datosBajada.bobinas || 0}
-            </td>
-            <td>${datosBajada.ptcb.toFixed(3)}</td>
-            <td>${datosBajada.mlBajada}</td>
-            <td>${datosBajada.mm2Bajada.toFixed(3)}</td>
-            <td>${datosBajada.ancho}</td>
-            <td>${datosBajada.kgmb.toFixed(3)}</td>
-            <td>${datosBajada.pesoBase}</td>
-        </tr>
-    `;
-    
-    // Agregar la nueva fila al final de la tabla existente
-    const tabla = document.getElementById(domtbl2);
-    const tbody = tabla.querySelector('tbody') || tabla;
-    tbody.insertAdjacentHTML('beforeend', body2);
-    
-    // Agregar botón si es necesario
-    if (!document.querySelector(`#${domtbl2} .btn-agregar-bajada`)) {
-        const btnRow = `
-            <tr>
-                <td colspan="8" class="text-center">
-                    <button class="btn btn-sm bg-target btn-agregar-bajada" 
-                            onclick="agregarBajadaRollo(${datosBajada.folioBitacora}, ${datosBajada.clave}, ${datosBajada.notbl}, '${domtbl2}')">
-                        <i class="fas fa-plus"></i> Agregar Bajada
-                    </button>
-                </td>
-            </tr>
-        `;
-        tbody.insertAdjacentHTML('beforeend', btnRow);
-    }
+    header('Content-Type: application/json');
+    echo json_encode($response);
 }
