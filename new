@@ -1,35 +1,3 @@
-function cargarRegistroSpooler() {
-    $folio = $_POST["folio"];
-    $notbl = $_POST["notbl"];
-    $nuevoId = $_POST["nuevoId"];
-    
-    // Respuesta con datos en cero para el nuevo registro
-    $response = array(
-        "rollos" => array(
-            array(
-                "idSU" => 0,
-                "NoRollo" => 0,
-                "KGTotalRollo" => 0,
-                "MetrosLineales" => 0
-            )
-        ),
-        "bajada" => array(
-            "idBajada" => 0,
-            "NoBajada" => 0,
-            "bobinas" => 0,
-            "ptcb" => 0,
-            "mlBajada" => 0,
-            "mm2Bajada" => 0,
-            "ancho" => 0,
-            "kgmb" => 0,
-            "pesoBase" => 0,
-            "folioBitacora" => $folio,
-            "clave" => 0,
-            "notbl" => $notbl
-        ),
-        "idRollo" => $nuevoId
-    );
-    
-    header('Content-Type: application/json');
-    echo json_encode($response);
-}
+VM5536:1 Uncaught (in promise) SyntaxError: Failed to execute 'json' on 'Response': Unexpected end of JSON input
+    at BitPresentaciones.cargarNuevoRegistroSpooler (sectionpresentaciones.js:86:42)
+    at async BitPresentaciones.savePresentacionSpooler (sectionpresentaciones.js:63:9)
