@@ -1,152 +1,144 @@
-async getCellValueRollos(cell) {
-    const folio = document.getElementById("folio").value;
-    const rolloNumber = cell.innerText.trim();
-    if (!rolloNumber) return;
-    
-    const row = cell.closest('tr');
-    const recordId = row.getAttribute('data-id');
-    const cells = row.querySelectorAll("td");
-    
+Primeramente tengo esta funcion
+
+document.getElementById("savePresentacion1Spooler").addEventListener("click", (e) => {
+  e.preventDefault();
+  const folio = document.getElementById("folio").value;
+  const presentacion = document.getElementById("presentacion1Spooler").value;
+  const turnoen = document.getElementById("turnoenctext").textContent;
+  if(presentacion == "") {
+    swal.fire("Cuidado", "Debes seleccionar una clave", "warning");
+    return false;
+  }
+
+  document.getElementById("presentacion1Spooler").disabled = true;
+  document.getElementById("savePresentacion1Spooler").disabled = true;
+  Presentaciones.savePresentacionSpooler(folio, presentacion, turnoen, 1).then(() => {
+      Presentaciones.tblPresentacionSubSpooler(folio, 1, "tblpresentacionsub1Spooler", "tblClaveSubSpooler1");
+  });
+});
+
+Que manda a llamar a dos funciones, una llamada savePresentacionSpooler y dependiendo del resultado llama a tblPresentacionSubSpooler, las dos funciones son las siguientes
+
+  async savePresentacionSpooler(folio, presentacion, turnoen, notbl) {
     const data = new FormData();
-    data.append("rollo", rolloNumber);
-    
-    try {
-        const response = await fetch("php/presentacion.php?buscarRollo", {
-            method: "POST",
-            body: data
-        });
-        const result = await response.json();
-        
-        if (result.success && result.data) {
-            // Actualizar la celda de KG
-            const kgCell = row.cells[1];
-            kgCell.innerText = result.data[0].PesoTotal;
-            
-            // Recalcular acumulados LOCALMENTE
-            this.recalcularAcumuladosRollos(row.closest('tbody'));
-            
-            // Solo guardar, NO recargar toda la tabla
-            await this.savePresentacionAdicionalSpooler(
-                recordId,
-                rolloNumber,
-                result.data[0].PesoTotal,
-                cells[2].innerText
-            );
-        } else {
-            console.log(`Rollo ${rolloNumber} no encontrado`);
-        }
-    } catch (error) {
-        console.error("Error al buscar el rollo:", error);
-    }
-}
-
-
-getCellValueMetrosLineales(cell) {
-    const metrosLineales = cell.innerText.trim();
-    const row = cell.closest('tr');
-    const rolloId = row.getAttribute('data-id');
-    const cells = row.querySelectorAll("td");
-    
-    // Recalcular acumulados LOCALMENTE
-    this.recalcularAcumuladosRollos(row.closest('tbody'));
-    
-    // Solo guardar, NO recargar toda la tabla
-    this.updateMetrosLinealesRollo(rolloId, metrosLineales, cells[4].innerText);
-}
-
-
-getCellValueBobinas(cell) {
-    const row = cell.closest('tr');
-    const rolloId = row.getAttribute('data-id');
-    const cells = row.querySelectorAll("td");
-    const cellIndex = Array.from(row.children).indexOf(cell);
-    let NoBajada = cellIndex === 0 ? cell.innerText.trim() : cells[0].innerText.trim();
-    let bobinas = cellIndex === 1 ? cell.innerText.trim() : cells[1].innerText.trim();
-    
-    // Recalcular valores de bajada LOCALMENTE
-    this.recalcularValoresBajada(row);
-    
-    // Solo guardar, NO recargar toda la tabla
-    this.saveBajadasBobinas(
-        rolloId, 
-        NoBajada, 
-        bobinas, 
-        cells[2].innerText.trim(), 
-        cells[3].innerText.trim(), 
-        cells[4].innerText.trim(), 
-        cells[6].innerText.trim()
-    );
-}
-
-// Recalcular acumulados de KG y ML en la tabla de rollos
-recalcularAcumuladosRollos(tbody) {
-    if (!tbody) return;
-    
-    let acckg = 0;
-    let accml = 0;
-    const filas = tbody.querySelectorAll('tr:not(.total-row):not(.btn-agregar-row)');
-    
-    filas.forEach(fila => {
-        const kg = parseFloat(fila.cells[1]?.innerText) || 0;
-        const ml = parseFloat(fila.cells[3]?.innerText) || 0;
-        acckg += kg;
-        accml += ml;
-        
-        // Actualizar celdas ocultas de acumulado
-        if (fila.cells[2]) fila.cells[2].innerText = acckg;
-        if (fila.cells[4]) fila.cells[4].innerText = accml;
-    });
-    
-    // Actualizar fila de total
-    const totalRow = tbody.querySelector('.total-row');
-    if (totalRow) {
-        if (totalRow.cells[1]) totalRow.cells[1].innerText = acckg.toFixed(3);
-        if (totalRow.cells[2]) totalRow.cells[2].innerText = accml.toFixed(3);
-    }
-    
-    return { acckg, accml };
-}
-
-// Recalcular valores de la bajada (ptcb, mlBajada, mm2Bajada, kgmb)
-recalcularValoresBajada(row) {
-    const bobinas = parseFloat(row.cells[1]?.innerText) || 0;
-    const ancho = parseFloat(row.cells[5]?.innerText) || 0;
-    const pesoBase = parseFloat(row.cells[7]?.innerText) || 0;
-    
-    // Obtener ML total de la tabla de rollos (esto es más complejo)
-    // Por ahora, actualizar según la lógica que necesites
-    
-    // Ejemplo simple:
-    const mlBajada = parseFloat(row.cells[3]?.innerText) || 0;
-    const mm2Bajada = (mlBajada * ancho) / 1000000;
-    const ptcb = mm2Bajada * pesoBase;
-    const kgmb = (parseFloat(row.cells[4]?.innerText) || 0) - ptcb;
-    
-    if (row.cells[2]) row.cells[2].innerText = ptcb.toFixed(3);
-    if (row.cells[4]) row.cells[4].innerText = mm2Bajada.toFixed(3);
-    if (row.cells[6]) row.cells[6].innerText = kgmb.toFixed(3);
-    
-    return { ptcb, mlBajada, mm2Bajada, kgmb };
-}
-
-
-async saveBajadasBobinas(id, NoBajada, bobinas, kgtbajada, mlbajada, mcbajada, kgmbajada){
-    const data = new FormData();
-    data.append("id", id);
-    data.append("NoBajada", NoBajada);
-    data.append("bobinas", bobinas);
-    data.append("kgtbajada", kgtbajada);
-    data.append("mlbajada", mlbajada);
-    data.append("mcbajada", mcbajada);
-    data.append("kgmbajada", kgmbajada);
-    
-    const respuesta = await fetch("php/presentacion.php?updateBajadaBobinas", {
+    data.append("folio", folio);
+    data.append("presentacion", presentacion);
+    data.append("turnoen", turnoen);
+    data.append("notbl", notbl);
+    const respuestaraw = await fetch(
+      "php/presentacion.php?savePresentacionSpooler",
+      {
         method: "POST",
         body: data,
-    });
+      },
+    );
+     respuestaraw.status === 200 &&
+      swal.fire("Listo", "La acción se completo correctamente", "success");
+      this.recargarTblPresentacionSubSpooler();
+    respuestaraw.status === 500 &&
+      swal.fire(
+        "ERROR",
+        "Hay problema al guardar en la base de datos",
+        "error",
+      );
+  }
 
-    if (!respuesta.ok) {
-        swal.fire("ERROR", "Hay un problema al actualizar la información", "error");
+
+
+  // Tabla de Spooler
+  async tblPresentacionSubSpooler(folio, notbl, domtbl, domtbl2) {
+    const data = new FormData();
+    let body = "";
+    let body2 = "";
+    let presentacion = "";
+    data.append("folio", folio);
+    data.append("notbl", notbl);
+    // Obtener datos desde el servidor
+    const respuestaraw = await fetch(
+      "php/presentacion.php?tblPresentacionSubSpooler",
+      {
+        method: "POST",
+        body: data,
+      },
+    );
+    const respuesta = await respuestaraw.json();
+    // Procesar los datos recibidos
+    let acckg = 0;
+    let accml = 0;
+    let idRollo = 0;
+    let idBajada = 0;
+    respuesta.forEach((newelement) => {
+      acckg = Math.round((acckg + newelement.KGTotalRollo) * 1000) / 1000;
+      accml = Math.round((accml + newelement.MetrosLineales) * 1000) / 1000;
+      idRollo = newelement.idPT;
+      idBajada = newelement.idSD;
+      body += `
+          <tr data-id="${newelement.idSU}">
+            <td contenteditable="true" class="editable" onblur="getCellValueRollos(this)" onkeydown="handleKeyDownTelas(event, this)">${newelement.NoRollo || 0}</td>
+            <td>${newelement.KGTotalRollo || 0}</td>
+            <td hidden>${acckg}</td>
+            <td contenteditable="true" class="editable" onblur="getCellValueMetrosLineales(this)" onkeydown="handleKeyDownTelas(event, this)">${newelement.MetrosLineales || 0}</td>
+            <td hidden>${accml}</td>
+          </tr>
+      `;
+      presentacion = newelement.Clave;
+      this.savePresentacionAdicionalSpooler(
+        newelement.idSU,
+        newelement.NoRollo,
+        newelement.KGTotalRollo,
+        acckg
+      );
+      this.updateMetrosLinealesRollo(
+        newelement.idSU,
+        newelement.MetrosLineales,
+        accml
+      )
+    });
+   
+  const { mlBajada, mm2Bajada, ptcb, kgmb } =
+    calcularBajada(respuesta, acckg, accml);
+
+    if(body !== ""){
+      document.getElementById("presentacion" + notbl + "Spooler").value = presentacion;
+      document.getElementById("presentacion" + notbl + "Spooler").disabled =
+          true;
+        document.getElementById("savePresentacion" + notbl + "Spooler").disabled =
+          true;
+      body += `<tr>
+                <td class="fw-bold">Total</td>
+                <td>${acckg}</td>
+                <td>${accml}</td>
+              </tr>`;
+      body += `<tr>
+                <td colspan="6" class="text-center">
+                  <button class="btn btn-sm bg-target" onclick="agregarRollo(${idRollo})" this.disabled=true;>
+                    <i class="fas fa-plus"></i> Agregar Rollo
+                  </button>
+                </td>
+              </tr>`;
+       body2 += `
+              <tr data-id="${idBajada}">
+                <td contenteditable="true" class="editable"
+                    onblur="getCellValueBobinas(this)"
+                    onkeydown="handleKeyDownTelas(event, this)">
+                  ${respuesta[0].NoBajada || 0}
+                </td>
+                <td contenteditable="true" class="editable"
+                    onblur="getCellValueBobinas(this)"
+                    onkeydown="handleKeyDownTelas(event, this)">
+                  ${respuesta[0].bobinas || 0}
+                </td>
+                <td>${ptcb.toFixed(3)}</td>
+                <td>${mlBajada}</td>
+                <td>${mm2Bajada.toFixed(3)}</td>
+                <td>${respuesta[0].ancho}</td>
+                <td>${kgmb.toFixed(3)}</td>
+                <td>${respuesta[0].pesoBase}</td>
+              </tr>`;
     }
-    // ELIMINA la llamada a recargarTblPresentacionSubSpooler()
-}
+   
+
+    document.getElementById(domtbl).innerHTML = body;
+    document.getElementById(domtbl2).innerHTML = body2;
+  }
+
