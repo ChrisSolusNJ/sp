@@ -1,13 +1,53 @@
 Ok ahora me da este error
 
-sectionpresentaciones.js:153 Uncaught (in promise) TypeError: Cannot read properties of null (reading 'querySelector')
-    at BitPresentaciones.agregarFilaBajada (sectionpresentaciones.js:153:25)
+sectionpresentaciones.js:156 Uncaught (in promise) SyntaxError: Failed to execute 'querySelector' on 'Document': '#[object HTMLTableSectionElement] .btn-agregar-bajada' is not a valid selector.
+    at BitPresentaciones.agregarFilaBajada (sectionpresentaciones.js:156:19)
     at BitPresentaciones.cargarNuevoRegistroSpooler (sectionpresentaciones.js:126:10)
     at async BitPresentaciones.savePresentacionSpooler (sectionpresentaciones.js:63:9)
+
+Aqui
+  agregarFilaBajada(domtbl2, datosBajada) {
+    console.log(domtbl2);
+    const body2 = `
+        <tr data-id="${datosBajada.idBajada}">
+            <td contenteditable="true" class="editable"
+                onblur="getCellValueBobinas(this)"
+                onkeydown="handleKeyDownTelas(event, this)">
+                ${datosBajada.NoBajada || 0}
+            </td>
+            <td contenteditable="true" class="editable"
+                onblur="getCellValueBobinas(this)"
+                onkeydown="handleKeyDownTelas(event, this)">
+                ${datosBajada.bobinas || 0}
+            </td>
+            <td>${datosBajada.ptcb.toFixed(3)}</td>
+            <td>${datosBajada.mlBajada}</td>
+            <td>${datosBajada.mm2Bajada.toFixed(3)}</td>
+            <td>${datosBajada.ancho}</td>
+            <td>${datosBajada.kgmb.toFixed(3)}</td>
+            <td>${datosBajada.pesoBase}</td>
+        </tr>
+    `;
+    
+    // Agregar la nueva fila al final de la tabla existente
+    domtbl2.insertAdjacentHTML('beforeend', body2);
+    
+    // Agregar botón si es necesario
+    if (!document.querySelector(`#${domtbl2} .btn-agregar-bajada`)) {
+        const btnRow = `
+            <tr>
+                <td colspan="8" class="text-center">
+                    <button class="btn btn-sm bg-target btn-agregar-bajada" 
+                            onclick="agregarBajadaRollo(${datosBajada.folioBitacora}, ${datosBajada.clave}, ${datosBajada.notbl}, '${domtbl2}')">
+                        <i class="fas fa-plus"></i> Agregar Bajada
+                    </button>
+                </td>
+            </tr>
+        `;
+        tbody.insertAdjacentHTML('beforeend', btnRow);
+    }
+}
+
+
 Aqui
 
-    // Agregar la nueva fila al final de la tabla existente
-    const tabla = document.getElementById(domtbl2);
-    const tbody = tabla.querySelector('tbody') || tabla;
-    tbody.insertAdjacentHTML('beforeend', body2);
-    
