@@ -1,16 +1,227 @@
-Dentro de esas funciones llaman a estas en php
+Estas vendrian siendo mis otras funciones (esto corresponden al paso 3)
 
-    function savePresentacionSpooler(){
-        
+  async savePresentacionAdicionalSpooler(id, norollo, kg, acckg) {
+      const data = new FormData();
+      data.append("id", id);
+      data.append("norollo", norollo);
+      data.append("kg", kg);
+      data.append("acckg", acckg);
+      const respuestaraw = await fetch("php/presentacion.php?updateTablaSpooler", {
+        method: "POST",
+        body: data,
+      });
+    respuestaraw.ok
+      ? null
+      : swal.fire(
+          "ERROR",
+          "Hay un problema al actualizar la información",
+          "error",
+        );
+  }
+
+  async updateMetrosLinealesRollo(id, metrosLineales, accml){
+        const data = new FormData();
+        data.append("id", id);
+        data.append("ml", metrosLineales);
+        data.append("accml", accml);
+        const respuestaraw = await fetch("php/presentacion.php?updateMetrosLinealesRollo", {
+          method: "POST",
+          body: data,
+        });
+         respuestaraw.ok
+          ? null
+          : swal.fire(
+              "ERROR",
+              "Hay un problema al actualizar la información",
+              "error",
+        );
+
+  }
+
+  async saveBajadasBobinas(id, NoBajada, bobinas, kgtbajada, mlbajada, mcbajada, kgmbajada){
+    const data = new FormData();
+    data.append("id", id);
+    data.append("NoBajada", NoBajada);
+    data.append("bobinas", bobinas);
+    data.append("kgtbajada", kgtbajada);
+    data.append("mlbajada", mlbajada);
+    data.append("mcbajada", mcbajada);
+    data.append("kgmbajada", kgmbajada);
+    const respuesta = await fetch("php/presentacion.php?updateBajadaBobinas", {
+      method: "POST",
+      body: data,
+    });
+
+    if (respuesta.ok) {
+      await this.recargarTblPresentacionSubSpooler();
+    } else {
+      swal.fire(
+      "ERROR",
+      "Hay un problema al actualizar la información",
+      "error",
+      );
+    }
+  }
+
+
+  agregarRollo(idRollo) {
+    Swal.fire({
+      title: "Rollo Maestro",
+      text: "¿Deseas agregar un nuevo rollo?",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Sí, agregar",
+      cancelButtonText: "Cancelar",
+      confirmButtonColor: "#28a745",
+      cancelButtonColor: "#d33",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        this.saveDataSpooler(idRollo);
+      }
+    });
+  }
+
+  async saveDataSpooler(id) {
+    const data = new FormData();
+    data.append("id", id);
+     const respuestaraw = await fetch(
+      "php/presentacion.php?InsertarDataSpooler2",
+      {
+        method: "POST",
+        body: data,
+      },
+    );
+
+    if (respuestaraw.status === 200) {
+      swal.fire("Listo", "La acción se completó correctamente", "success");
+      this.recargarTblPresentacionSubSpooler();
+    }
+
+    if (respuestaraw.status === 500) {
+      swal.fire(
+        "ERROR",
+        "Hay problema al guardar en la base de datos",
+        "error",
+      );
+    }
+  }
+
+async recargarTblPresentacionSubSpooler() {
+    const folio = document.getElementById("folio")?.value;
+
+    if (!folio) {
+      return;
+    }
+
+    const tablas = [
+      [1, "tblpresentacionsub1Spooler", "tblClaveSubSpooler1"],
+      [2, "tblpresentacionsub2Spooler", "tblClaveSubSpooler2"],
+      [3, "tblpresentacionsub3Spooler", "tblClaveSubSpooler3"],
+    ];
+
+    for (const [notbl, domtbl, domtbl2] of tablas) {
+      if (document.getElementById(domtbl)) {
+        await this.tblPresentacionSubSpooler(folio, notbl, domtbl, domtbl2);
+      }
+    }
+  }
+
+unction InsertarDataSpooler2(){
+        if (!isset($_POST["id"])) {
+            http_response_code(400);
+            echo json_encode([
+                "status" => "error",
+                "msg" => "No se recibió el parámetro id",
+                "post" => $_POST
+            ]);
+            return;
+        }
+
         $Conecta = new ClassConexion();
         $conn = $Conecta->conexion("TLX004MXDB");
-        $folio = $_POST["folio"];
-        $presentacion = $_POST["presentacion"];
-        $notbl = $_POST["notbl"];
-        $array = array();
-        $query = "INSERT INTO tblMXPRProduccionTNTEnc (folio,Clave, NoTabla) VALUES (?,?,?)";
-        $result = sqlsrv_query($conn, $query, array($folio, $presentacion, $notbl));
+        $idPT = $_POST["id"];
+
+        $query = "INSERT INTO tblMXPRProduccionTNTSpoolerUno (idPT,NoRollo,KGTotalRollo,AccKG,MetrosLineales,AccML) 
+                    VALUES (?, ?, ?, ?, ?, ?) ";
+        $params = array($idPT, 0, 0, 0, 0, 0);
+
+        $stmt = sqlsrv_query($conn, $query, $params);
+
+         if ($stmt === false) {
+            http_response_code(500);
+            echo json_encode([
+                "status" => "error",
+                "errors" => sqlsrv_errors()
+            ]);
+            return;
+        }
+
         http_response_code(200);
+        echo json_encode(["status" => "ok"]);
+    }
+
+    function buscarRollo() {
+
+    header('Content-Type: application/json; charset=utf-8');
+
+    // Validar POST
+    if (!isset($_POST['rollo']) || empty($_POST['rollo'])) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'Rollo no recibido'
+        ]);
+        return;
+    }
+
+    $Conecta = new ClassConexion();
+    $conn = $Conecta->conexion("TLX004MXDB");
+
+    $NoRollo = $_POST['rollo'];
+
+    $query = "
+        SELECT NoBajada, PesoTotal 
+        FROM [TLX004MXDB].[dbo].[tblMXPRProduccionTNTSub]
+        WHERE NoBajada = ?
+    ";
+
+    $params = [$NoRollo];
+    $result = sqlsrv_query($conn, $query, $params);
+
+    if ($result === false) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'Error en la consulta',
+            'error' => sqlsrv_errors()
+        ]);
+        return;
+    }
+
+    $data = [];
+
+    while ($row = sqlsrv_fetch_array($result, SQLSRV_FETCH_ASSOC)) {
+        $data[] = [
+            'NoBajada'   => $row['NoBajada'],
+            'PesoTotal' => $row['PesoTotal']
+        ];
+    }
+
+    echo json_encode([
+        'success' => !empty($data),
+        'data' => $data
+    ]);
+    }
+function updateTablaSpooler(){
+        $Conecta = new ClassConexion();
+        $conn = $Conecta->conexion("TLX004MXDB");
+
+        $id = $_POST['id'];
+        $norollo = $_POST['norollo'];
+        $pesoTotal = $_POST['kg'];
+        $acckg = $_POST['acckg'];
+
+        $query = "UPDATE tblMXPRProduccionTNTSpoolerUno SET NoRollo = ?, KGTotalRollo = ?, AccKG = ? WHERE id = ?";
+        $params = array($norollo, $pesoTotal, $acckg, $id);
+        $result = sqlsrv_query($conn, $query, $params);
         if ($result === false) {
             if (($errors = sqlsrv_errors()) != null) {
                 foreach ($errors as $error) {
@@ -18,193 +229,69 @@ Dentro de esas funciones llaman a estas en php
                     echo "code: " . $error['code'] . "<br />";
                     echo "message: " . $error['message'] . "<br />";
                 }
+            } else {
+                echo json_encode("done");
             }
-            http_response_code(500);
         } else {
-            $sql = "SELECT @@IDENTITY AS last_id";
-            $stmt = sqlsrv_query($conn, $sql);
-            $row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
-            $last_id = $row['last_id'];
-
-            $this->InsertarDataSpooler($last_id);
-            http_response_code(200);
+            echo json_encode("done");
         }
     }
 
-function tblPresentacionSubSpooler(){
+    function updateMetrosLinealesRollo() {
         $Conecta = new ClassConexion();
         $conn = $Conecta->conexion("TLX004MXDB");
-        $folio = $_POST['folio'];
-        $notbl = $_POST['notbl'];
-        $query = "SELECT tblSU.[id] AS idSpoolerUno,tblEPT.folio,tblSU.[idPT],tblEPT.Clave,tblVEC.Descripcion_Articulo AS Descripcion
-                        ,[NoRollo],[KGTotalRollo],[AccKG],[MetrosLineales],[AccML],tblSD.id AS idSpoolerDos, tblSD.NoBajada
-                        ,tblSD.bobinas,tblSD.KgTotalesBajada,tblSD.MLBajada,tblSD.MMCBajada,tblVEC.ancho,tblSD.KgMBajada
-                        ,tblVEC.pesoBase,tblSD.Comentarios
-                    FROM [TLX004MXDB].[dbo].[tblMXPRProduccionTNTSpoolerUno] tblSU
-                    LEFT JOIN TLX004MXDB.dbo.tblMXPRProduccionTNTEnc tblEPT ON tblEPT.idPT = tblSU.idPT
-                    LEFT JOIN TLX002MXDB.dbo.tblValeEClaves tblVEC ON tblVEC.NoClave = tblEPT.Clave
-                    LEFT JOIN TLX004MXDB.dbo.tblMXPRProduccionTNTSpoolerDos tblSD ON tblSD.idPT = tblSU.idPT
-                    WHERE tblEPT.folio = ? AND tblEPT.NoTabla = ?";
-        $params = array($folio,$notbl);
-        $result = sqlsrv_query($conn, $query, $params);
-        
-        $result = sqlsrv_query($conn, $query, $params);
 
+        $id = $_POST["id"];
+        $ml = $_POST["ml"];
+        $accml = $_POST["accml"];
+        $query = "UPDATE tblMXPRProduccionTNTSpoolerUno SET MetrosLineales = ?, AccML = ? WHERE id = ?";
+        $params = array($ml, $accml, $id);
+        $result = sqlsrv_query($conn, $query, $params);
         if ($result === false) {
-            die(print_r(sqlsrv_errors(), true));
+            if (($errors = sqlsrv_errors()) != null) {
+                foreach ($errors as $error) {
+                    echo "SQLSTATE: " . $error['SQLSTATE'] . "<br />";
+                    echo "code: " . $error['code'] . "<br />";
+                    echo "message: " . $error['message'] . "<br />";
+                }
+            } else {
+                echo json_encode("done");
+            }
+        } else {
+            echo json_encode("done");
         }
-
-        $array = array();
-        while ($row = sqlsrv_fetch_array($result)) {
-            array_push($array, [
-                'idSU' => $row['idSpoolerUno'],
-                'idPT' => $row['idPT'],
-                'folio' => $row['folio'],
-                'Clave' => $row['Clave'],
-                'Descripcion' => $row['Descripcion'],
-                'NoRollo' => $row['NoRollo'],
-                'KGTotalRollo' => $row['KGTotalRollo'],
-                'AccKG' => $row['AccKG'],
-                'MetrosLineales' => $row['MetrosLineales'],
-                'AccML' => $row['AccML'],
-                'idSD' => $row['idSpoolerDos'],
-                'NoBajada' => $row['NoBajada'],
-                'bobinas' => $row['bobinas'],
-                'KgTotalesBajada' => $row['KgTotalesBajada'],
-                'MLBajada' => $row['MLBajada'],
-                'MMCBajada' => $row['MMCBajada'],
-                'ancho' => $row['ancho'],
-                'KgMBajada' => $row['KgMBajada'],
-                'pesoBase' => $row['pesoBase'],
-                'Comentarios' => $row['Comentarios']
-            ]);
-        }
-        echo json_encode($array);
     }
 
-
-function InsertarDataSpooler($idpresentacionenc)
-    {
+    function updateBajadaBobinas() {
         $Conecta = new ClassConexion();
         $conn = $Conecta->conexion("TLX004MXDB");
-        
-        // Iniciar transacción
-        sqlsrv_begin_transaction($conn);
-    
-        // Insert tabla 1
-        $query1 = "INSERT INTO tblMXPRProduccionTNTSpoolerUno(idPt,NoRollo,KGTotalRollo,AccKG,MetrosLineales,AccML) 
-                    VALUES (?, ?, ?, ?, ?, ?) ";
-        $params1 = array($idpresentacionenc, 0, 0, 0, 0, 0);
-        $stmt1 = sqlsrv_query($conn, $query1, $params1);
 
-        //Insert tabla 2
-        $query2 = "INSERT INTO tblMXPRProduccionTNTSpoolerDos(idPT,NoBajada,bobinas,KgTotalesBajada,MLBajada,MMCBajada,KgMBajada,Comentarios) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?) ";
-        $params2 = array($idpresentacionenc, 0, 0, 0, 0, 0, 0, "");
-        $stmt2 = sqlsrv_query($conn, $query2, $params2);
+        $id = $_POST["id"];
+        $NoBajada = $_POST["NoBajada"];
+        $bobinas = $_POST["bobinas"];
+        $kgtbajada = $_POST["kgtbajada"];
+        $mlbajada = $_POST["mlbajada"];
+        $mcbajada = $_POST["mcbajada"];
+        $kgmbajada = $_POST["kgmbajada"];
 
-        // Validar ambas insercciones
-        if($stmt1 && $stmt2){
-            sqlsrv_commit($conn);
-            return true;
+        $query = "UPDATE tblMXPRProduccionTNTSpoolerDos SET NoBajada = ?, bobinas = ?,
+                    KgTotalesBajada = ?, MLBajada = ?, MMCBajada = ?,  KgMBajada = ? WHERE id = ?";
+        $params = array($NoBajada, $bobinas, $kgtbajada, $mlbajada, $mcbajada, $kgmbajada, $id);
+        $result = sqlsrv_query($conn, $query, $params);
+        if ($result === false) {
+            if (($errors = sqlsrv_errors()) != null) {
+                foreach ($errors as $error) {
+                    echo "SQLSTATE: " . $error['SQLSTATE'] . "<br />";
+                    echo "code: " . $error['code'] . "<br />";
+                    echo "message: " . $error['message'] . "<br />";
+                }
+            } else {
+                echo json_encode("done");
+            }
         } else {
-            sqlsrv_rollback($conn);
-            return false;
+            echo json_encode("done");
         }
-
     }
 
 
-
-Que son las que me permiten guardar y visualizar los datos de las tablas
-
-Luego dentro de tblPresentacionSubSpooler tengo lo siguiente
-
-async getCellValueRollos(cell) {
-    const folio = document.getElementById("folio").value;
-    // Obtener el valor ingresado (número de rollo)
-    const rolloNumber = cell.innerText.trim();
-    // Validar que no esté vacío
-    if (!rolloNumber) return;
-    // Obtener la fila (tr) a la que pertenece esta celda
-    const row = cell.closest('tr');
-    // Obtener el ID del registro (data-id de la fila)
-    const recordId = row.getAttribute('data-id');
-    const cells = row.querySelectorAll("td");
-    // Crear FormData para la petición
-    const data = new FormData();
-    data.append("rollo", rolloNumber);
-    try {
-        // Realizar la petición al servidor para buscar el rollo
-        const response = await fetch("php/presentacion.php?buscarRollo", {
-            method: "POST",
-            body: data
-        });
-        const result = await response.json();
-        if (result.success && result.data) {
-            // Actualizar la celda de KG (segunda celda de la fila, índice 1)
-            const kgCell = row.cells[1]; // La celda de KG está en el índice 1
-            kgCell.innerText = result.data[0].PesoTotal; 
-            this.savePresentacionAdicionalSpooler(
-              recordId,
-              rolloNumber,
-              result.data[0].PesoTotal,
-              cells[2].innerText, // Acumulado KG
-            ).then(() => {
-              const table = cell.closest("table");
-              table.id === "tablapresentacion1Spooler" &&
-                this.tblPresentacionSubSpooler(folio, 1, "tblpresentacionsub1Spooler", "tblClaveSubSpooler1");
-              table.id === "tablapresentacion2Spooler" &&
-                this.tblPresentacionSubSpooler(folio, 2, "tblpresentacionsub2Spooler", "tblClaveSubSpooler2");
-              table.id === "tablapresentacion3Spooler" &&
-                this.tblPresentacionSubSpooler(folio, 3, "tblpresentacionsub3Spooler", "tblClaveSubSpooler3");
-            });
-        } else {
-            console.log(`Rollo ${rolloNumber} no encontrado`);
-            // Opcional: Mostrar mensaje al usuario
-            // alert(`El rollo ${rolloNumber} no existe en la base de datos`);
-        }
-    } catch (error) {
-        console.error("Error al buscar el rollo:", error);
-    }
-  }
-
-  getCellValueMetrosLineales(cell){
-    const folio = document.getElementById("folio").value;
-    const metrosLineales = cell.innerText.trim();
-    const row = cell.closest('tr');
-    const rolloId = row.getAttribute('data-id');
-    const cells = row.querySelectorAll("td");
-    this.updateMetrosLinealesRollo(rolloId, metrosLineales, cells[4].innerText).then(() => {
-      const table = cell.closest("table");
-      table.id === "tablapresentacion1Spooler" &&
-        this.tblPresentacionSubSpooler(folio, 1, "tblpresentacionsub1Spooler", "tblClaveSubSpooler1");
-      table.id === "tablapresentacion2Spooler" &&
-        this.tblPresentacionSubSpooler(folio, 2, "tblpresentacionsub2Spooler", "tblClaveSubSpooler2");
-      table.id === "tablapresentacion3Spooler" &&
-        this.tblPresentacionSubSpooler(folio, 3, "tblpresentacionsub3Spooler", "tblClaveSubSpooler3");
-    });
-  }
-
-  getCellValueBobinas(cell){
-    const folio = document.getElementById("folio").value;
-    const row = cell.closest('tr');
-    const rolloId = row.getAttribute('data-id');
-    const cells = row.querySelectorAll("td");
-    const cellIndex = Array.from(row.children).indexOf(cell);
-    let NoBajada = cellIndex === 0 ? cell.innerText.trim() : cells[0].innerText.trim();
-    let bobinas = cellIndex === 1 ? cell.innerText.trim() : cells[1].innerText.trim();
-    const table = cell.closest("table");
-    this.saveBajadasBobinas(rolloId, NoBajada, bobinas, cells[2].innerText.trim(), cells[3].innerText.trim(), cells[4].innerText.trim(), cells[6].innerText.trim()).then(() => {
-      
-      table.id === "tablapresentacion1Spooler" &&
-        this.tblPresentacionSubSpooler(folio, 1, "tblpresentacionsub1Spooler", "tblClaveSubSpooler1");
-      table.id === "tablapresentacion2Spooler" &&
-        this.tblPresentacionSubSpooler(folio, 2, "tblpresentacionsub2Spooler", "tblClaveSubSpooler2");
-      table.id === "tablapresentacion3Spooler" &&
-        this.tblPresentacionSubSpooler(folio, 3, "tblpresentacionsub3Spooler", "tblClaveSubSpooler3");
-    });
-  }
-
-hasta ahi termina el paso 2 vale?
-
+Hasta aqui temrina el paso 3
