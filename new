@@ -1,0 +1,250 @@
+necesito ayuda con esto, actualmente tengo este flujo de funciones js
+
+async tblPresentacionSubSpooler(folio, notbl, domtbl, domtbl2) {
+    const data = new FormData();
+    let body = "";
+    let body2 = "";
+    let presentacion = "";
+    data.append("folio", folio);
+    data.append("notbl", notbl);
+    // Obtener datos desde el servidor
+    const respuestaraw = await fetch(
+      "php/presentacion.php?tblPresentacionSubSpooler",
+      {
+        method: "POST",
+        body: data,
+      },
+    );
+    const respuesta = await respuestaraw.json();
+    // Procesar los datos recibidos
+    let acckg = 0;
+    let accml = 0;
+    let idRollo = 0;
+    let idBajada = 0;
+    let folioBitacora = 0;
+    let clave = "";
+    respuesta.forEach((newelement) => {
+      console.log(newelement);
+      acckg = Math.round((acckg + newelement.KGTotalRollo) * 1000) / 1000;
+      accml = Math.round((accml + newelement.MetrosLineales) * 1000) / 1000;
+      idRollo = newelement.idPT;
+      idBajada = newelement.idSD;
+      folioBitacora = newelement.folio;
+      clave = newelement.Clave;
+      body += `
+          <tr data-id="${newelement.idSU}">
+            <td contenteditable="true" class="editable" onblur="getCellValueRollos(this)" onkeydown="handleKeyDownTelas(event, this)">${newelement.NoRollo || 0}</td>
+            <td>${newelement.KGTotalRollo || 0}</td>
+            <td hidden>${acckg}</td>
+            <td contenteditable="true" class="editable" onblur="getCellValueMetrosLineales(this)" onkeydown="handleKeyDownTelas(event, this)">${newelement.MetrosLineales || 0}</td>
+            <td hidden>${accml}</td>
+          </tr>
+      `;
+      presentacion = newelement.Clave;
+      this.savePresentacionAdicionalSpooler(
+        newelement.idSU,
+        newelement.NoRollo,
+        newelement.KGTotalRollo,
+        acckg
+      );
+      this.updateMetrosLinealesRollo(
+        newelement.idSU,
+        newelement.MetrosLineales,
+        accml
+      )
+    });
+   
+  const { mlBajada, mm2Bajada, ptcb, kgmb } =
+    calcularBajada(respuesta, acckg, accml);
+
+    if(body !== ""){
+      document.getElementById("presentacion" + notbl + "Spooler").value = presentacion;
+      document.getElementById("presentacion" + notbl + "Spooler").disabled =
+          true;
+        document.getElementById("savePresentacion" + notbl + "Spooler").disabled =
+          true;
+      body += `<tr>
+                <td class="fw-bold">Total</td>
+                <td>${acckg}</td>
+                <td>${accml}</td>
+              </tr>`;
+      body += `<tr>
+                <td colspan="6" class="text-center">
+                  <button class="btn btn-sm bg-target" onclick="agregarRollo(${idRollo})" this.disabled=true;>
+                    <i class="fas fa-plus"></i> Agregar Rollo
+                  </button>
+                </td>
+              </tr>`;
+       body2 += `
+              <tr data-id="${idBajada}">
+                <td contenteditable="true" class="editable"
+                    onblur="getCellValueBobinas(this)"
+                    onkeydown="handleKeyDownTelas(event, this)">
+                  ${respuesta[0].NoBajada || 0}
+                </td>
+                <td contenteditable="true" class="editable"
+                    onblur="getCellValueBobinas(this)"
+                    onkeydown="handleKeyDownTelas(event, this)">
+                  ${respuesta[0].bobinas || 0}
+                </td>
+                <td>${ptcb.toFixed(3)}</td>
+                <td>${mlBajada}</td>
+                <td>${mm2Bajada.toFixed(3)}</td>
+                <td>${respuesta[0].ancho}</td>
+                <td>${kgmb.toFixed(3)}</td>
+                <td>${respuesta[0].pesoBase}</td>
+              </tr>`;
+        body2 += `<tr>
+                <td colspan="6" class="text-center">
+                  <button class="btn btn-sm bg-target" onclick="agregarBajadaRollo(${folioBitacora}, ${clave}, ${notbl}, ${domtbl})" this.disabled=true;>
+                    <i class="fas fa-plus"></i> Agregar Bajada
+                  </button>
+                </td>
+              </tr>`;
+    }
+   
+
+    document.getElementById(domtbl).innerHTML = body;
+    document.getElementById(domtbl2).innerHTML = body2;
+  }
+
+window.agregarBajadaRollo = (idBitacora, clave, notbl, domtbl) => {
+  console.log(domtbl);
+  bitPresentaciones.agregarBajadaRollo(idBitacora, clave, notbl, domtbl);
+}
+
+
+
+  agregarBajadaRollo(idBitacora, clave, notbl,domtbl) {
+    console.log(domtbl);
+    Swal.fire({
+      title: "Rollo Maestro",
+      text: "¿Deseas agregar una nueva bajada?",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Sí, agregar",
+      cancelButtonText: "Cancelar",
+      confirmButtonColor: "#28a745",
+      cancelButtonColor: "#d33",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        domtbl.innerHTML = "";
+        this.savePresentacionSpooler(idBitacora, clave, notbl);
+      }
+    });
+  }
+
+ async savePresentacionSpooler(folio, presentacion, notbl) {
+    const data = new FormData();
+    data.append("folio", folio);
+    data.append("presentacion", presentacion);
+    data.append("turnoen", turnoen);
+    data.append("notbl", notbl);
+    const respuestaraw = await fetch(
+      "php/presentacion.php?savePresentacionSpooler",
+      {
+        method: "POST",
+        body: data,
+      },
+    );
+     respuestaraw.status === 200 &&
+      swal.fire("Listo", "La acción se completo correctamente", "success");
+      this.recargarTblPresentacionSubSpooler();
+    respuestaraw.status === 500 &&
+      swal.fire(
+        "ERROR",
+        "Hay problema al guardar en la base de datos",
+        "error",
+      );
+  }
+
+  async recargarTblPresentacionSubSpooler() {
+    const folio = document.getElementById("folio")?.value;
+
+    if (!folio) {
+      return;
+    }
+
+    const tablas = [
+      [1, "tblpresentacionsub1Spooler", "tblClaveSubSpooler1"],
+      [2, "tblpresentacionsub2Spooler", "tblClaveSubSpooler2"],
+      [3, "tblpresentacionsub3Spooler", "tblClaveSubSpooler3"],
+    ];
+
+    for (const [notbl, domtbl, domtbl2] of tablas) {
+      if (document.getElementById(domtbl)) {
+        await this.tblPresentacionSubSpooler(folio, notbl, domtbl, domtbl2);
+      }
+    }
+  }
+
+Ahora estas son mis funciones php
+    function savePresentacionSpooler(){
+        
+        $Conecta = new ClassConexion();
+        $conn = $Conecta->conexion("TLX004MXDB");
+        $folio = $_POST["folio"];
+        $presentacion = $_POST["presentacion"];
+        $notbl = $_POST["notbl"];
+        $array = array();
+        $query = "INSERT INTO tblMXPRProduccionTNTEnc (folio,Clave, NoTabla) VALUES (?,?,?)";
+        $result = sqlsrv_query($conn, $query, array($folio, $presentacion, $notbl));
+        http_response_code(200);
+        if ($result === false) {
+            if (($errors = sqlsrv_errors()) != null) {
+                foreach ($errors as $error) {
+                    echo "SQLSTATE: " . $error['SQLSTATE'] . "<br />";
+                    echo "code: " . $error['code'] . "<br />";
+                    echo "message: " . $error['message'] . "<br />";
+                }
+            }
+            http_response_code(500);
+        } else {
+            $sql = "SELECT @@IDENTITY AS last_id";
+            $stmt = sqlsrv_query($conn, $sql);
+            $row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
+            $last_id = $row['last_id'];
+
+            $this->InsertarDataSpooler($last_id);
+            http_response_code(200);
+        }
+    }
+
+    function InsertarDataSpooler($idpresentacionenc)
+    {
+        $Conecta = new ClassConexion();
+        $conn = $Conecta->conexion("TLX004MXDB");
+        
+        // Iniciar transacción
+        sqlsrv_begin_transaction($conn);
+    
+        // Insert tabla 1
+        $query1 = "INSERT INTO tblMXPRProduccionTNTSpoolerUno(idPt,NoRollo,KGTotalRollo,AccKG,MetrosLineales,AccML) 
+                    VALUES (?, ?, ?, ?, ?, ?) ";
+        $params1 = array($idpresentacionenc, 0, 0, 0, 0, 0);
+        $stmt1 = sqlsrv_query($conn, $query1, $params1);
+
+        //Insert tabla 2
+        $query2 = "INSERT INTO tblMXPRProduccionTNTSpoolerDos(idPT,NoBajada,bobinas,KgTotalesBajada,MLBajada,MMCBajada,KgMBajada,Comentarios) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?) ";
+        $params2 = array($idpresentacionenc, 0, 0, 0, 0, 0, 0, "");
+        $stmt2 = sqlsrv_query($conn, $query2, $params2);
+
+        // Validar ambas insercciones
+        if($stmt1 && $stmt2){
+            sqlsrv_commit($conn);
+            return true;
+        } else {
+            sqlsrv_rollback($conn);
+            return false;
+        }
+
+    }
+
+Solo que no encuentro la lógica a lo que necesito, haz de cuenta que al darle click al botón agregarBajadaRollo se debe hacer lo siguiente
+
+Primero la tabla que tiene domtbl se tiene que hacer un borrado (hasta eso ahorita esta bien)
+Se tiene que agregar un nuevo registro con savePresentacionSpooler en tblMXPRProduccionTNTEnc que a su vez guarda en  tblMXPRProduccionTNTSpoolerUno y tblMXPRProduccionTNTSpoolerDos
+Después de que se haya reseteado y guardado la tabla domtbl no debe mostrar la data anterior y en domtbl2 se tiene que agregar una nueva fila, independiente de la primer fila o fila anterior, no se si me doy a entender o te lo explico de otra manera mas entendible
+
+
