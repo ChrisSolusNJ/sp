@@ -1,3 +1,98 @@
-sectionpresentaciones.js:122 Uncaught (in promise) TypeError: Cannot set properties of undefined (setting 'innerHTML')
-    at BitPresentaciones.cargarNuevaBajada (sectionpresentaciones.js:122:22)
-    at async BitPresentaciones.savePresentacionSpooler (sectionpresentaciones.js:63:9)
+async cargarNuevoRegistroSpooler(folio, notbl, domtbl, domtbl2, nuevoId) {
+    const data = new FormData();
+    data.append("folio", folio);
+    data.append("notbl", notbl);
+    data.append("nuevoId", nuevoId); // Enviar el ID específico
+    
+    const respuestaraw = await fetch(
+        "php/presentacion.php?cargarRegistroSpooler", // Nuevo endpoint
+        {
+            method: "POST",
+            body: data,
+        },
+    );
+    const respuesta = await respuestaraw.json();
+    
+    // Construir tabla 1 con los datos en cero del nuevo registro
+    let body = "";
+    let acckg = 0;
+    let accml = 0;
+    
+    respuesta.rollos.forEach((newelement) => {
+        acckg = Math.round((acckg + newelement.KGTotalRollo) * 1000) / 1000;
+        accml = Math.round((accml + newelement.MetrosLineales) * 1000) / 1000;
+        
+        body += `
+            <tr data-id="${newelement.idSU}">
+                <td contenteditable="true" class="editable" onblur="getCellValueRollos(this)" onkeydown="handleKeyDownTelas(event, this)">${newelement.NoRollo || 0}</td>
+                <td>${newelement.KGTotalRollo || 0}</td>
+                <td hidden>${acckg}</td>
+                <td contenteditable="true" class="editable" onblur="getCellValueMetrosLineales(this)" onkeydown="handleKeyDownTelas(event, this)">${newelement.MetrosLineales || 0}</td>
+                <td hidden>${accml}</td>
+            </tr>
+        `;
+    });
+    
+    body += `<tr>
+                <td class="fw-bold">Total</td>
+                <td>${acckg}</td>
+                <td>${accml}</td>
+            </tr>`;
+    body += `<tr>
+                <td colspan="6" class="text-center">
+                    <button class="btn btn-sm bg-target" onclick="agregarRollo(${respuesta.idRollo})" this.disabled=true;>
+                        <i class="fas fa-plus"></i> Agregar Rollo
+                    </button>
+                </td>
+            </tr>`;
+    
+    // Cargar SOLO la tabla 1 con el nuevo registro
+    document.getElementById(domtbl).innerHTML = body;
+    
+    // AGREGAR nueva fila a la tabla 2 (sin borrar la existente)
+    this.agregarFilaBajada(domtbl2, respuesta.bajada);
+}
+
+
+agregarFilaBajada(domtbl2, datosBajada) {
+    const body2 = `
+        <tr data-id="${datosBajada.idBajada}">
+            <td contenteditable="true" class="editable"
+                onblur="getCellValueBobinas(this)"
+                onkeydown="handleKeyDownTelas(event, this)">
+                ${datosBajada.NoBajada || 0}
+            </td>
+            <td contenteditable="true" class="editable"
+                onblur="getCellValueBobinas(this)"
+                onkeydown="handleKeyDownTelas(event, this)">
+                ${datosBajada.bobinas || 0}
+            </td>
+            <td>${datosBajada.ptcb.toFixed(3)}</td>
+            <td>${datosBajada.mlBajada}</td>
+            <td>${datosBajada.mm2Bajada.toFixed(3)}</td>
+            <td>${datosBajada.ancho}</td>
+            <td>${datosBajada.kgmb.toFixed(3)}</td>
+            <td>${datosBajada.pesoBase}</td>
+        </tr>
+    `;
+    
+    // Agregar la nueva fila al final de la tabla existente
+    const tabla = document.getElementById(domtbl2);
+    const tbody = tabla.querySelector('tbody') || tabla;
+    tbody.insertAdjacentHTML('beforeend', body2);
+    
+    // Agregar botón si es necesario
+    if (!document.querySelector(`#${domtbl2} .btn-agregar-bajada`)) {
+        const btnRow = `
+            <tr>
+                <td colspan="8" class="text-center">
+                    <button class="btn btn-sm bg-target btn-agregar-bajada" 
+                            onclick="agregarBajadaRollo(${datosBajada.folioBitacora}, ${datosBajada.clave}, ${datosBajada.notbl}, '${domtbl2}')">
+                        <i class="fas fa-plus"></i> Agregar Bajada
+                    </button>
+                </td>
+            </tr>
+        `;
+        tbody.insertAdjacentHTML('beforeend', btnRow);
+    }
+}
