@@ -1,111 +1,124 @@
-agregarBajadaRollo(idBitacora, clave, notbl, domtbl) {
-    Swal.fire({
-        title: "Rollo Maestro",
-        text: "¿Deseas agregar una nueva bajada?",
-        icon: "question",
-        showCancelButton: true,
-        confirmButtonText: "Sí, agregar",
-        cancelButtonText: "Cancelar",
-        confirmButtonColor: "#28a745",
-        cancelButtonColor: "#d33",
-    }).then(async (result) => {
-        if (result.isConfirmed) {
-            // Limpiar la tabla domtbl inmediatamente
-            const tablaElement = document.getElementById(domtbl);
-            if (tablaElement) {
-                tablaElement.innerHTML = '<tr><td colspan="4" class="text-center">Cargando...</td></tr>';
-            }
-            
-            // Guardar el nuevo registro y obtener su ID
-            const nuevoId = await this.savePresentacionSpooler(idBitacora, clave, notbl);
-            
-            if (nuevoId) {
-                // Recargar SOLO esta tabla específica con los nuevos datos
-                const folio = document.getElementById("folio")?.value;
-                const domtbl2 = `tblClaveSubSpooler${notbl}`;
-                await this.tblPresentacionSubSpooler(folio, notbl, domtbl, domtbl2);
-            }
-        }
-    });
-}
-
-
-async recargarTablaEspecifica(folio, notbl) {
-    const domtbl = `tblpresentacionsub${notbl}Spooler`;
-    const domtbl2 = `tblClaveSubSpooler${notbl}`;
-    
-    if (document.getElementById(domtbl)) {
-        await this.tblPresentacionSubSpooler(folio, notbl, domtbl, domtbl2);
-    }
-}
-
-
-
 function savePresentacionSpooler(){
     $Conecta = new ClassConexion();
     $conn = $Conecta->conexion("TLX004MXDB");
     $folio = $_POST["folio"];
     $presentacion = $_POST["presentacion"];
     $notbl = $_POST["notbl"];
-    $array = array();
     
     $query = "INSERT INTO tblMXPRProduccionTNTEnc (folio,Clave, NoTabla) VALUES (?,?,?)";
     $result = sqlsrv_query($conn, $query, array($folio, $presentacion, $notbl));
     
     if ($result === false) {
-        if (($errors = sqlsrv_errors()) != null) {
-            foreach ($errors as $error) {
-                echo "SQLSTATE: " . $error['SQLSTATE'] . "<br />";
-                echo "code: " . $error['code'] . "<br />";
-                echo "message: " . $error['message'] . "<br />";
-            }
-        }
-        echo json_encode(['success' => false]);
+        $errors = sqlsrv_errors();
+        $errorMsg = $errors ? $errors[0]['message'] : 'Error desconocido';
+        echo json_encode(['success' => false, 'error' => $errorMsg]);
         http_response_code(500);
+        return;
+    }
+    
+    // Obtener el ID insertado correctamente
+    $sql = "SELECT SCOPE_IDENTITY() AS last_id";
+    $stmt = sqlsrv_query($conn, $sql);
+    if (!$stmt) {
+        echo json_encode(['success' => false, 'error' => 'No se pudo obtener el ID del registro']);
+        http_response_code(500);
+        return;
+    }
+    
+    $row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
+    $last_id = $row['last_id'];
+    
+    // Insertar en las tablas secundarias
+    $insertSuccess = $this->InsertarDataSpooler($conn, $last_id);
+    
+    if ($insertSuccess === true) {
+        echo json_encode(['success' => true, 'idPresentacion' => $last_id]);
+        http_response_code(200);
     } else {
-        $sql = "SELECT SCOPE_IDENTITY() AS last_id";
-        $stmt = sqlsrv_query($conn, $sql);
-        $row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
-        $last_id = $row['last_id'];
-
-        $insertSuccess = $this->InsertarDataSpooler($last_id);
+        // Si falló la inserción en las tablas secundarias, eliminar el registro principal
+        $deleteQuery = "DELETE FROM tblMXPRProduccionTNTEnc WHERE id = ?";
+        $deleteStmt = sqlsrv_query($conn, $deleteQuery, array($last_id));
         
-        if ($insertSuccess) {
-            echo json_encode(['success' => true, 'idPresentacion' => $last_id]);
-            http_response_code(200);
-        } else {
-            echo json_encode(['success' => false]);
-            http_response_code(500);
-        }
+        echo json_encode(['success' => false, 'error' => $insertSuccess]);
+        http_response_code(500);
     }
 }
 
-function InsertarDataSpooler($idpresentacionenc)
+function InsertarDataSpooler($conn, $idpresentacionenc)
 {
-    $Conecta = new ClassConexion();
-    $conn = $Conecta->conexion("TLX004MXDB");
-    
     // Iniciar transacción
-    sqlsrv_begin_transaction($conn);
-
-    // Insert tabla 1 - Usar valores por defecto
-    $query1 = "INSERT INTO tblMXPRProduccionTNTSpoolerUno(idPt,NoRollo,KGTotalRollo,AccKG,MetrosLineales,AccML) 
-                VALUES (?, 0, 0, 0, 0, 0)";
-    $params1 = array($idpresentacionenc);
-    $stmt1 = sqlsrv_query($conn, $query1, $params1);
-
-    // Insert tabla 2 - Usar valores por defecto
-    $query2 = "INSERT INTO tblMXPRProduccionTNTSpoolerDos(idPT,NoBajada,bobinas,KgTotalesBajada,MLBajada,MMCBajada,KgMBajada,Comentarios) 
-                VALUES (?, 0, 0, 0, 0, 0, 0, '')";
-    $params2 = array($idpresentacionenc);
-    $stmt2 = sqlsrv_query($conn, $query2, $params2);
-
-    // Validar ambas inserciones
-    if($stmt1 && $stmt2){
-        sqlsrv_commit($conn);
-        return true;
-    } else {
+    if (!sqlsrv_begin_transaction($conn)) {
+        return "No se pudo iniciar la transacción";
+    }
+    
+    try {
+        // Insert tabla 1 - Valores por defecto
+        $query1 = "INSERT INTO tblMXPRProduccionTNTSpoolerUno(idPt, NoRollo, KGTotalRollo, AccKG, MetrosLineales, AccML) 
+                   VALUES (?, 0, 0, 0, 0, 0)";
+        $params1 = array($idpresentacionenc);
+        $stmt1 = sqlsrv_query($conn, $query1, $params1);
+        
+        if ($stmt1 === false) {
+            $errors = sqlsrv_errors();
+            throw new Exception("Error al insertar en SpoolerUno: " . ($errors ? $errors[0]['message'] : 'Error desconocido'));
+        }
+        
+        // Insert tabla 2 - Valores por defecto
+        $query2 = "INSERT INTO tblMXPRProduccionTNTSpoolerDos(idPT, NoBajada, bobinas, KgTotalesBajada, MLBajada, MMCBajada, KgMBajada, Comentarios) 
+                   VALUES (?, 0, 0, 0, 0, 0, 0, '')";
+        $params2 = array($idpresentacionenc);
+        $stmt2 = sqlsrv_query($conn, $query2, $params2);
+        
+        if ($stmt2 === false) {
+            $errors = sqlsrv_errors();
+            throw new Exception("Error al insertar en SpoolerDos: " . ($errors ? $errors[0]['message'] : 'Error desconocido'));
+        }
+        
+        // Si todo salió bien, confirmar la transacción
+        if (sqlsrv_commit($conn)) {
+            return true;
+        } else {
+            throw new Exception("No se pudo confirmar la transacción");
+        }
+        
+    } catch (Exception $e) {
+        // Si algo salió mal, deshacer la transacción
         sqlsrv_rollback($conn);
-        return false;
+        return $e->getMessage();
+    }
+}
+
+async savePresentacionSpooler(folio, presentacion, notbl) {
+    const data = new FormData();
+    data.append("folio", folio);
+    data.append("presentacion", presentacion);
+    data.append("turnoen", turnoen);
+    data.append("notbl", notbl);
+    
+    try {
+        const respuestaraw = await fetch(
+            "php/presentacion.php?savePresentacionSpooler",
+            {
+                method: "POST",
+                body: data,
+            },
+        );
+        
+        const respuesta = await respuestaraw.json();
+        
+        if (respuestaraw.status === 200 && respuesta.success) {
+            await swal.fire("Listo", "La acción se completó correctamente", "success");
+            // Recargar SOLO la tabla específica que se acaba de guardar
+            await this.recargarTablaEspecifica(folio, notbl);
+            return respuesta.idPresentacion;
+        } else {
+            // Mostrar el error específico de la base de datos
+            const errorMsg = respuesta.error || "Error desconocido";
+            throw new Error(errorMsg);
+        }
+    } catch (error) {
+        console.error("Error en savePresentacionSpooler:", error);
+        await swal.fire("ERROR", `Hay problema al guardar en la base de datos: ${error.message}`, "error");
+        return null;
     }
 }
