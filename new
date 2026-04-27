@@ -1,3 +1,13 @@
-VM5536:1 Uncaught (in promise) SyntaxError: Failed to execute 'json' on 'Response': Unexpected end of JSON input
-    at BitPresentaciones.cargarNuevoRegistroSpooler (sectionpresentaciones.js:86:42)
+Ok ahora me da este error
+
+sectionpresentaciones.js:153 Uncaught (in promise) TypeError: Cannot read properties of null (reading 'querySelector')
+    at BitPresentaciones.agregarFilaBajada (sectionpresentaciones.js:153:25)
+    at BitPresentaciones.cargarNuevoRegistroSpooler (sectionpresentaciones.js:126:10)
     at async BitPresentaciones.savePresentacionSpooler (sectionpresentaciones.js:63:9)
+Aqui
+
+    // Agregar la nueva fila al final de la tabla existente
+    const tabla = document.getElementById(domtbl2);
+    const tbody = tabla.querySelector('tbody') || tabla;
+    tbody.insertAdjacentHTML('beforeend', body2);
+    
