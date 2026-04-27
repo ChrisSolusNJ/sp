@@ -1,174 +1,136 @@
-async savePresentacionSpooler(folio, presentacion, notbl, domtbl, domtbl2) {
-    const data = new FormData();
-    data.append("folio", folio);
-    data.append("presentacion", presentacion);
-    data.append("notbl", notbl);
-
-    const respuestaraw = await fetch(
-      "php/presentacion.php?savePresentacionSpooler",
-      {
-        method: "POST",
-        body: data,
-      },
-    );
-
-     if(respuestaraw.status === 200) {
-        const resultado = await respuestaraw.json();
-        swal.fire("Listo", "La acción se completo correctamente", "success");
-
-        await this.cargarNuevoRegistroSpooler(folio, notbl, domtbl, domtbl2, resultado.id);
-     } else if(respuestaraw.status === 500) {
-      swal.fire(
-        "ERROR",
-        "Hay problema al guardar en la base de datos",
-        "error",
-      );
-    }
-  }
-
-  async cargarNuevoRegistroSpooler(folio, notbl, domtbl, domtbl2, nuevoId) {
-    const data = new FormData();
-    data.append("folio", folio);
-    data.append("notbl", notbl);
-    data.append("nuevoId", nuevoId); // Enviar el ID específico
+async getCellValueRollos(cell) {
+    const folio = document.getElementById("folio").value;
+    const rolloNumber = cell.innerText.trim();
+    if (!rolloNumber) return;
     
-    const respuestaraw = await fetch(
-        "php/presentacion.php?cargarRegistroSpooler", // Nuevo endpoint
-        {
+    const row = cell.closest('tr');
+    const recordId = row.getAttribute('data-id');
+    const cells = row.querySelectorAll("td");
+    
+    const data = new FormData();
+    data.append("rollo", rolloNumber);
+    
+    try {
+        const response = await fetch("php/presentacion.php?buscarRollo", {
             method: "POST",
-            body: data,
-        },
-    );
-    const respuesta = await respuestaraw.json();
-    console.log(respuesta);
-    
-    // Construir tabla 1 con los datos en cero del nuevo registro
-    let body = "";
-    let acckg = 0;
-    let accml = 0;
-    
-    respuesta.rollos.forEach((newelement) => {
-        acckg = Math.round((acckg + newelement.KGTotalRollo) * 1000) / 1000;
-        accml = Math.round((accml + newelement.MetrosLineales) * 1000) / 1000;
+            body: data
+        });
+        const result = await response.json();
         
-        body += `
-            <tr data-id="${newelement.idSU}">
-                <td contenteditable="true" class="editable" onblur="getCellValueRollos(this)" onkeydown="handleKeyDownTelas(event, this)">${newelement.NoRollo || 0}</td>
-                <td>${newelement.KGTotalRollo || 0}</td>
-                <td hidden>${acckg}</td>
-                <td contenteditable="true" class="editable" onblur="getCellValueMetrosLineales(this)" onkeydown="handleKeyDownTelas(event, this)">${newelement.MetrosLineales || 0}</td>
-                <td hidden>${accml}</td>
-            </tr>
-        `;
-    });
-    
-    body += `<tr>
-                <td class="fw-bold">Total</td>
-                <td>${acckg}</td>
-                <td>${accml}</td>
-            </tr>`;
-    body += `<tr>
-                <td colspan="6" class="text-center">
-                    <button class="btn btn-sm bg-target" onclick="agregarRollo(${respuesta.idRollo})" this.disabled=true;>
-                        <i class="fas fa-plus"></i> Agregar Rollo
-                    </button>
-                </td>
-            </tr>`;
-    
-    // Cargar SOLO la tabla 1 con el nuevo registro
-    domtbl.innerHTML = body;
-    
-    // AGREGAR nueva fila a la tabla 2 (sin borrar la existente)
-    this.agregarFilaBajada(domtbl2, respuesta.bajada);
-  }
-
-  agregarFilaBajada(domtbl2, datosBajada) {
-    console.log("domtbl2 es:", domtbl2);
-    console.log("Tipo de domtbl2:", typeof domtbl2);
-    
-    // domtbl2 ya es un elemento del DOM (el tbody)
-    const tbody = domtbl2; // Porque ya es el elemento, no el ID
-    
-    const body2 = `
-        <tr data-id="${datosBajada.idBajada}">
-            <td contenteditable="true" class="editable"
-                onblur="getCellValueBobinas(this)"
-                onkeydown="handleKeyDownTelas(event, this)">
-                ${datosBajada.NoBajada || 0}
-            </td>
-            <td contenteditable="true" class="editable"
-                onblur="getCellValueBobinas(this)"
-                onkeydown="handleKeyDownTelas(event, this)">
-                ${datosBajada.bobinas || 0}
-            </td>
-            <td>${datosBajada.ptcb.toFixed(3)}</td>
-            <td>${datosBajada.mlBajada}</td>
-            <td>${datosBajada.mm2Bajada.toFixed(3)}</td>
-            <td>${datosBajada.ancho}</td>
-            <td>${datosBajada.kgmb.toFixed(3)}</td>
-            <td>${datosBajada.pesoBase}</td>
-        </tr>
-    `;
-    
-    // Agregar la nueva fila directamente al tbody
-    tbody.insertAdjacentHTML('beforeend', body2);
-    
-    // Buscar el botón dentro del mismo tbody
-    if (!tbody.querySelector('.btn-agregar-bajada')) {
-        const btnRow = `
-            <tr class="btn-agregar-bajada-row">
-                <td colspan="8" class="text-center">
-                    <button class="btn btn-sm bg-target btn-agregar-bajada" 
-                            onclick="agregarBajadaRollo(${datosBajada.folioBitacora}, ${datosBajada.clave}, ${datosBajada.notbl}, '${domtbl2.id}')">
-                        <i class="fas fa-plus"></i> Agregar Bajada
-                    </button>
-                </td>
-            </tr>
-        `;
-        tbody.insertAdjacentHTML('beforeend', btnRow);
+        if (result.success && result.data) {
+            // Actualizar la celda de KG
+            const kgCell = row.cells[1];
+            kgCell.innerText = result.data[0].PesoTotal;
+            
+            // Recalcular acumulados LOCALMENTE
+            this.recalcularAcumuladosRollos(row.closest('tbody'));
+            
+            // Solo guardar, NO recargar toda la tabla
+            await this.savePresentacionAdicionalSpooler(
+                recordId,
+                rolloNumber,
+                result.data[0].PesoTotal,
+                cells[2].innerText
+            );
+        } else {
+            console.log(`Rollo ${rolloNumber} no encontrado`);
+        }
+    } catch (error) {
+        console.error("Error al buscar el rollo:", error);
     }
 }
 
-async savePresentacionAdicionalSpooler(id, norollo, kg, acckg) {
-      const data = new FormData();
-      data.append("id", id);
-      data.append("norollo", norollo);
-      data.append("kg", kg);
-      data.append("acckg", acckg);
-      const respuestaraw = await fetch("php/presentacion.php?updateTablaSpooler", {
-        method: "POST",
-        body: data,
-      });
-    respuestaraw.ok
-      ? null
-      : swal.fire(
-          "ERROR",
-          "Hay un problema al actualizar la información",
-          "error",
-        );
-  }
+
+getCellValueMetrosLineales(cell) {
+    const metrosLineales = cell.innerText.trim();
+    const row = cell.closest('tr');
+    const rolloId = row.getAttribute('data-id');
+    const cells = row.querySelectorAll("td");
+    
+    // Recalcular acumulados LOCALMENTE
+    this.recalcularAcumuladosRollos(row.closest('tbody'));
+    
+    // Solo guardar, NO recargar toda la tabla
+    this.updateMetrosLinealesRollo(rolloId, metrosLineales, cells[4].innerText);
+}
 
 
-async updateMetrosLinealesRollo(id, metrosLineales, accml){
-        const data = new FormData();
-        data.append("id", id);
-        data.append("ml", metrosLineales);
-        data.append("accml", accml);
-        const respuestaraw = await fetch("php/presentacion.php?updateMetrosLinealesRollo", {
-          method: "POST",
-          body: data,
-        });
-         respuestaraw.ok
-          ? null
-          : swal.fire(
-              "ERROR",
-              "Hay un problema al actualizar la información",
-              "error",
-        );
+getCellValueBobinas(cell) {
+    const row = cell.closest('tr');
+    const rolloId = row.getAttribute('data-id');
+    const cells = row.querySelectorAll("td");
+    const cellIndex = Array.from(row.children).indexOf(cell);
+    let NoBajada = cellIndex === 0 ? cell.innerText.trim() : cells[0].innerText.trim();
+    let bobinas = cellIndex === 1 ? cell.innerText.trim() : cells[1].innerText.trim();
+    
+    // Recalcular valores de bajada LOCALMENTE
+    this.recalcularValoresBajada(row);
+    
+    // Solo guardar, NO recargar toda la tabla
+    this.saveBajadasBobinas(
+        rolloId, 
+        NoBajada, 
+        bobinas, 
+        cells[2].innerText.trim(), 
+        cells[3].innerText.trim(), 
+        cells[4].innerText.trim(), 
+        cells[6].innerText.trim()
+    );
+}
 
-  }
+// Recalcular acumulados de KG y ML en la tabla de rollos
+recalcularAcumuladosRollos(tbody) {
+    if (!tbody) return;
+    
+    let acckg = 0;
+    let accml = 0;
+    const filas = tbody.querySelectorAll('tr:not(.total-row):not(.btn-agregar-row)');
+    
+    filas.forEach(fila => {
+        const kg = parseFloat(fila.cells[1]?.innerText) || 0;
+        const ml = parseFloat(fila.cells[3]?.innerText) || 0;
+        acckg += kg;
+        accml += ml;
+        
+        // Actualizar celdas ocultas de acumulado
+        if (fila.cells[2]) fila.cells[2].innerText = acckg;
+        if (fila.cells[4]) fila.cells[4].innerText = accml;
+    });
+    
+    // Actualizar fila de total
+    const totalRow = tbody.querySelector('.total-row');
+    if (totalRow) {
+        if (totalRow.cells[1]) totalRow.cells[1].innerText = acckg.toFixed(3);
+        if (totalRow.cells[2]) totalRow.cells[2].innerText = accml.toFixed(3);
+    }
+    
+    return { acckg, accml };
+}
 
-  async saveBajadasBobinas(id, NoBajada, bobinas, kgtbajada, mlbajada, mcbajada, kgmbajada){
+// Recalcular valores de la bajada (ptcb, mlBajada, mm2Bajada, kgmb)
+recalcularValoresBajada(row) {
+    const bobinas = parseFloat(row.cells[1]?.innerText) || 0;
+    const ancho = parseFloat(row.cells[5]?.innerText) || 0;
+    const pesoBase = parseFloat(row.cells[7]?.innerText) || 0;
+    
+    // Obtener ML total de la tabla de rollos (esto es más complejo)
+    // Por ahora, actualizar según la lógica que necesites
+    
+    // Ejemplo simple:
+    const mlBajada = parseFloat(row.cells[3]?.innerText) || 0;
+    const mm2Bajada = (mlBajada * ancho) / 1000000;
+    const ptcb = mm2Bajada * pesoBase;
+    const kgmb = (parseFloat(row.cells[4]?.innerText) || 0) - ptcb;
+    
+    if (row.cells[2]) row.cells[2].innerText = ptcb.toFixed(3);
+    if (row.cells[4]) row.cells[4].innerText = mm2Bajada.toFixed(3);
+    if (row.cells[6]) row.cells[6].innerText = kgmb.toFixed(3);
+    
+    return { ptcb, mlBajada, mm2Bajada, kgmb };
+}
+
+
+async saveBajadasBobinas(id, NoBajada, bobinas, kgtbajada, mlbajada, mcbajada, kgmbajada){
     const data = new FormData();
     data.append("id", id);
     data.append("NoBajada", NoBajada);
@@ -177,341 +139,14 @@ async updateMetrosLinealesRollo(id, metrosLineales, accml){
     data.append("mlbajada", mlbajada);
     data.append("mcbajada", mcbajada);
     data.append("kgmbajada", kgmbajada);
+    
     const respuesta = await fetch("php/presentacion.php?updateBajadaBobinas", {
-      method: "POST",
-      body: data,
-    });
-
-    if (respuesta.ok) {
-      await this.recargarTblPresentacionSubSpooler();
-    } else {
-      swal.fire(
-      "ERROR",
-      "Hay un problema al actualizar la información",
-      "error",
-      );
-    }
-  }
-
-  agregarBajada(idPT) {
-    Swal.fire({
-      title: "Agregar nueva bajada",
-      text: "¿Deseas crear una nueva bajada?",
-      icon: "question",
-      showCancelButton: true,
-      confirmButtonText: "Sí, agregar",
-      cancelButtonText: "Cancelar",
-      confirmButtonColor: "#28a745",
-      cancelButtonColor: "#d33",
-    }).then((result) => {
-      if (result.isConfirmed) {
-        this.saveDataTelas(idPT);
-      }
-    });
-  }
-
-  agregarRollo(idRollo) {
-    Swal.fire({
-      title: "Rollo Maestro",
-      text: "¿Deseas agregar un nuevo rollo?",
-      icon: "question",
-      showCancelButton: true,
-      confirmButtonText: "Sí, agregar",
-      cancelButtonText: "Cancelar",
-      confirmButtonColor: "#28a745",
-      cancelButtonColor: "#d33",
-    }).then((result) => {
-      if (result.isConfirmed) {
-        this.saveDataSpooler(idRollo);
-      }
-    });
-  }
-
-  agregarBajadaRollo(idBitacora, clave, notbl,domtbl, domtbl2) {
-    console.log(domtbl);
-    Swal.fire({
-      title: "Rollo Maestro",
-      text: "¿Deseas agregar una nueva bajada?",
-      icon: "question",
-      showCancelButton: true,
-      confirmButtonText: "Sí, agregar",
-      cancelButtonText: "Cancelar",
-      confirmButtonColor: "#28a745",
-      cancelButtonColor: "#d33",
-    }).then((result) => {
-      if (result.isConfirmed) {
-        domtbl.innerHTML = "";
-        this.savePresentacionSpooler(idBitacora, clave, notbl, domtbl, domtbl2);
-      }
-
-    });
-  }
-
-async saveDataSpooler(id) {
-    const data = new FormData();
-    data.append("id", id);
-     const respuestaraw = await fetch(
-      "php/presentacion.php?InsertarDataSpooler2",
-      {
         method: "POST",
         body: data,
-      },
-    );
-
-    if (respuestaraw.status === 200) {
-      swal.fire("Listo", "La acción se completó correctamente", "success");
-      this.recargarTblPresentacionSubSpooler();
-    }
-
-    if (respuestaraw.status === 500) {
-      swal.fire(
-        "ERROR",
-        "Hay problema al guardar en la base de datos",
-        "error",
-      );
-    }
-  }
-
-async recargarTblPresentacionSubSpooler() {
-    const folio = document.getElementById("folio")?.value;
-
-    if (!folio) {
-      return;
-    }
-
-    const tablas = [
-      [1, "tblpresentacionsub1Spooler", "tblClaveSubSpooler1"],
-      [2, "tblpresentacionsub2Spooler", "tblClaveSubSpooler2"],
-      [3, "tblpresentacionsub3Spooler", "tblClaveSubSpooler3"],
-    ];
-
-    for (const [notbl, domtbl, domtbl2] of tablas) {
-      if (document.getElementById(domtbl)) {
-        await this.tblPresentacionSubSpooler(folio, notbl, domtbl, domtbl2);
-      }
-    }
-  }
-
-async tblPresentacionSubSpooler(folio, notbl, domtbl, domtbl2) {
-    const data = new FormData();
-    let body = "";
-    let body2 = "";
-    let presentacion = "";
-    data.append("folio", folio);
-    data.append("notbl", notbl);
-    // Obtener datos desde el servidor
-    const respuestaraw = await fetch(
-      "php/presentacion.php?tblPresentacionSubSpooler",
-      {
-        method: "POST",
-        body: data,
-      },
-    );
-    const respuesta = await respuestaraw.json();
-    // Procesar los datos recibidos
-    let acckg = 0;
-    let accml = 0;
-    let idRollo = 0;
-    let idBajada = 0;
-    let folioBitacora = 0;
-    let clave = "";
-    respuesta.forEach((newelement) => {
-      console.log(newelement);
-      acckg = Math.round((acckg + newelement.KGTotalRollo) * 1000) / 1000;
-      accml = Math.round((accml + newelement.MetrosLineales) * 1000) / 1000;
-      idRollo = newelement.idPT;
-      idBajada = newelement.idSD;
-      folioBitacora = newelement.folio;
-      clave = newelement.Clave;
-      body += `
-          <tr data-id="${newelement.idSU}">
-            <td contenteditable="true" class="editable" onblur="getCellValueRollos(this)" onkeydown="handleKeyDownTelas(event, this)">${newelement.NoRollo || 0}</td>
-            <td>${newelement.KGTotalRollo || 0}</td>
-            <td hidden>${acckg}</td>
-            <td contenteditable="true" class="editable" onblur="getCellValueMetrosLineales(this)" onkeydown="handleKeyDownTelas(event, this)">${newelement.MetrosLineales || 0}</td>
-            <td hidden>${accml}</td>
-          </tr>
-      `;
-      presentacion = newelement.Clave;
-      this.savePresentacionAdicionalSpooler(
-        newelement.idSU,
-        newelement.NoRollo,
-        newelement.KGTotalRollo,
-        acckg
-      );
-      this.updateMetrosLinealesRollo(
-        newelement.idSU,
-        newelement.MetrosLineales,
-        accml
-      )
     });
-   
-  const { mlBajada, mm2Bajada, ptcb, kgmb } =
-    calcularBajada(respuesta, acckg, accml);
 
-    if(body !== ""){
-      document.getElementById("presentacion" + notbl + "Spooler").value = presentacion;
-      document.getElementById("presentacion" + notbl + "Spooler").disabled =
-          true;
-        document.getElementById("savePresentacion" + notbl + "Spooler").disabled =
-          true;
-      body += `<tr>
-                <td class="fw-bold">Total</td>
-                <td>${acckg}</td>
-                <td>${accml}</td>
-              </tr>`;
-      body += `<tr>
-                <td colspan="6" class="text-center">
-                  <button class="btn btn-sm bg-target" onclick="agregarRollo(${idRollo})" this.disabled=true;>
-                    <i class="fas fa-plus"></i> Agregar Rollo
-                  </button>
-                </td>
-              </tr>`;
-       body2 += `
-              <tr data-id="${idBajada}">
-                <td contenteditable="true" class="editable"
-                    onblur="getCellValueBobinas(this)"
-                    onkeydown="handleKeyDownTelas(event, this)">
-                  ${respuesta[0].NoBajada || 0}
-                </td>
-                <td contenteditable="true" class="editable"
-                    onblur="getCellValueBobinas(this)"
-                    onkeydown="handleKeyDownTelas(event, this)">
-                  ${respuesta[0].bobinas || 0}
-                </td>
-                <td>${ptcb.toFixed(3)}</td>
-                <td>${mlBajada}</td>
-                <td>${mm2Bajada.toFixed(3)}</td>
-                <td>${respuesta[0].ancho}</td>
-                <td>${kgmb.toFixed(3)}</td>
-                <td>${respuesta[0].pesoBase}</td>
-              </tr>`;
-        body2 += `<tr>
-                <td colspan="6" class="text-center">
-                  <button class="btn btn-sm bg-target" onclick="agregarBajadaRollo(${folioBitacora}, ${clave}, ${notbl}, ${domtbl}, ${domtbl2})" this.disabled=true;>
-                    <i class="fas fa-plus"></i> Agregar Bajada
-                  </button>
-                </td>
-              </tr>`;
+    if (!respuesta.ok) {
+        swal.fire("ERROR", "Hay un problema al actualizar la información", "error");
     }
-   
-
-    document.getElementById(domtbl).innerHTML = body;
-    document.getElementById(domtbl2).innerHTML = body2;
-  }
-
- async getCellValueRollos(cell) {
-    const folio = document.getElementById("folio").value;
-    // Obtener el valor ingresado (número de rollo)
-    const rolloNumber = cell.innerText.trim();
-    // Validar que no esté vacío
-    if (!rolloNumber) return;
-    // Obtener la fila (tr) a la que pertenece esta celda
-    const row = cell.closest('tr');
-    // Obtener el ID del registro (data-id de la fila)
-    const recordId = row.getAttribute('data-id');
-    const cells = row.querySelectorAll("td");
-    // Crear FormData para la petición
-    const data = new FormData();
-    data.append("rollo", rolloNumber);
-    try {
-        // Realizar la petición al servidor para buscar el rollo
-        const response = await fetch("php/presentacion.php?buscarRollo", {
-            method: "POST",
-            body: data
-        });
-        const result = await response.json();
-        if (result.success && result.data) {
-            // Actualizar la celda de KG (segunda celda de la fila, índice 1)
-            const kgCell = row.cells[1]; // La celda de KG está en el índice 1
-            kgCell.innerText = result.data[0].PesoTotal; 
-            this.savePresentacionAdicionalSpooler(
-              recordId,
-              rolloNumber,
-              result.data[0].PesoTotal,
-              cells[2].innerText, // Acumulado KG
-            ).then(() => {
-              const table = cell.closest("table");
-              table.id === "tablapresentacion1Spooler" &&
-                this.tblPresentacionSubSpooler(folio, 1, "tblpresentacionsub1Spooler", "tblClaveSubSpooler1");
-              table.id === "tablapresentacion2Spooler" &&
-                this.tblPresentacionSubSpooler(folio, 2, "tblpresentacionsub2Spooler", "tblClaveSubSpooler2");
-              table.id === "tablapresentacion3Spooler" &&
-                this.tblPresentacionSubSpooler(folio, 3, "tblpresentacionsub3Spooler", "tblClaveSubSpooler3");
-            });
-        } else {
-            console.log(`Rollo ${rolloNumber} no encontrado`);
-            // Opcional: Mostrar mensaje al usuario
-            // alert(`El rollo ${rolloNumber} no existe en la base de datos`);
-        }
-    } catch (error) {
-        console.error("Error al buscar el rollo:", error);
-    }
-  }
-
-  getCellValueMetrosLineales(cell){
-    const folio = document.getElementById("folio").value;
-    const metrosLineales = cell.innerText.trim();
-    const row = cell.closest('tr');
-    const rolloId = row.getAttribute('data-id');
-    const cells = row.querySelectorAll("td");
-    this.updateMetrosLinealesRollo(rolloId, metrosLineales, cells[4].innerText).then(() => {
-      const table = cell.closest("table");
-      table.id === "tablapresentacion1Spooler" &&
-        this.tblPresentacionSubSpooler(folio, 1, "tblpresentacionsub1Spooler", "tblClaveSubSpooler1");
-      table.id === "tablapresentacion2Spooler" &&
-        this.tblPresentacionSubSpooler(folio, 2, "tblpresentacionsub2Spooler", "tblClaveSubSpooler2");
-      table.id === "tablapresentacion3Spooler" &&
-        this.tblPresentacionSubSpooler(folio, 3, "tblpresentacionsub3Spooler", "tblClaveSubSpooler3");
-    });
-  }
-
-  getCellValueBobinas(cell){
-    const folio = document.getElementById("folio").value;
-    const row = cell.closest('tr');
-    const rolloId = row.getAttribute('data-id');
-    const cells = row.querySelectorAll("td");
-    const cellIndex = Array.from(row.children).indexOf(cell);
-    let NoBajada = cellIndex === 0 ? cell.innerText.trim() : cells[0].innerText.trim();
-    let bobinas = cellIndex === 1 ? cell.innerText.trim() : cells[1].innerText.trim();
-    const table = cell.closest("table");
-    this.saveBajadasBobinas(rolloId, NoBajada, bobinas, cells[2].innerText.trim(), cells[3].innerText.trim(), cells[4].innerText.trim(), cells[6].innerText.trim()).then(() => {
-      
-      table.id === "tablapresentacion1Spooler" &&
-        this.tblPresentacionSubSpooler(folio, 1, "tblpresentacionsub1Spooler", "tblClaveSubSpooler1");
-      table.id === "tablapresentacion2Spooler" &&
-        this.tblPresentacionSubSpooler(folio, 2, "tblpresentacionsub2Spooler", "tblClaveSubSpooler2");
-      table.id === "tablapresentacion3Spooler" &&
-        this.tblPresentacionSubSpooler(folio, 3, "tblpresentacionsub3Spooler", "tblClaveSubSpooler3");
-    });
-  }
-
-
-window.agregarRollo = (idRollo) => {
-  bitPresentaciones.agregarRollo(idRollo);
+    // ELIMINA la llamada a recargarTblPresentacionSubSpooler()
 }
-
-window.agregarBajadaRollo = (idBitacora, clave, notbl, domtbl, domtbl2) => {
-  bitPresentaciones.agregarBajadaRollo(idBitacora, clave, notbl, domtbl, domtbl2);
-}
-
-window.handleKeyDownTelas = function (e, cell) {
-  if (e.key === "Enter") {
-    e.preventDefault();
-    cell.blur();
-  }
-};
-
-function calcularBajada(respuesta, acckg, accml) {
-  const bobinas = Number(respuesta[0].bobinas) || 0;
-  const ancho = Number(respuesta[0].ancho) || 0;
-  const pesoBase = Number(respuesta[0].pesoBase) || 0;
-
-  const mlBajada = accml * bobinas;
-  const mm2Bajada = (mlBajada * ancho) / 1000000;
-  const ptcb = mm2Bajada * pesoBase;
-  const kgmb = (acckg - ptcb);
-
-  return { mlBajada, mm2Bajada, ptcb, kgmb };
-}
-
