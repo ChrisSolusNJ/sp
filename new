@@ -1,9 +1,130 @@
-# Rollo	Peso Total (KG)	Metros Lineales
-500	312	2000
-700	270	3000
-Total	582	5000
+agregarBajadaRollo(idBitacora, clave, notbl, domtbl, domtbl2) {
+    console.log(domtbl);
+    Swal.fire({
+        title: "Rollo Maestro",
+        text: "¿Deseas agregar una nueva bajada?",
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonText: "Sí, agregar",
+        cancelButtonText: "Cancelar",
+        confirmButtonColor: "#28a745",
+        cancelButtonColor: "#d33",
+    }).then(async (result) => {
+        if (result.isConfirmed) {
+            // Limpiar solo la primera tabla visualmente
+            document.getElementById(domtbl).innerHTML = "";
+            
+            // Guardar el nuevo registro
+            await this.savePresentacionSpooler(idBitacora, clave, notbl, domtbl, domtbl2);
+        }
+    });
+}
 
-y esta la segunda
 
-# Bajada	# Bobinas	KG Carretes Bajada	ML Bajada	MM2 Bajada	Ancho(mm)	KG Merma Bajada	Peso Base(GSM)
-1	7	167.090	35000	2.170	62	414.910	77
+async savePresentacionSpooler(folio, presentacion, notbl, domtbl, domtbl2) {
+    const data = new FormData();
+    data.append("folio", folio);
+    data.append("presentacion", presentacion);
+    data.append("turnoen", turnoen);
+    data.append("notbl", notbl);
+    
+    const respuestaraw = await fetch(
+        "php/presentacion.php?savePresentacionSpooler",
+        {
+            method: "POST",
+            body: data,
+        },
+    );
+    
+    if (respuestaraw.status === 200) {
+        swal.fire("Listo", "La acción se completó correctamente", "success");
+        // Recargar solo la primera tabla con el nuevo registro
+        await this.cargarNuevaBajada(folio, notbl, domtbl, domtbl2);
+    } else if (respuestaraw.status === 500) {
+        swal.fire("ERROR", "Hay problema al guardar en la base de datos", "error");
+    }
+}
+
+
+async cargarNuevaBajada(folio, notbl, domtbl, domtbl2) {
+    const data = new FormData();
+    data.append("folio", folio);
+    data.append("notbl", notbl);
+    
+    const respuestaraw = await fetch(
+        "php/presentacion.php?tblPresentacionSubSpooler",
+        {
+            method: "POST",
+            body: data,
+        },
+    );
+    const respuesta = await respuestaraw.json();
+    
+    // Procesar solo los datos del nuevo registro (debería venir solo el nuevo)
+    let acckg = 0;
+    let accml = 0;
+    let body = "";
+    let presentacion = "";
+    
+    respuesta.forEach((newelement) => {
+        acckg = Math.round((acckg + newelement.KGTotalRollo) * 1000) / 1000;
+        accml = Math.round((accml + newelement.MetrosLineales) * 1000) / 1000;
+        
+        body += `
+            <tr data-id="${newelement.idSU}">
+                <td contenteditable="true" class="editable" onblur="getCellValueRollos(this)" onkeydown="handleKeyDownTelas(event, this)">${newelement.NoRollo || 0}</td>
+                <td>${newelement.KGTotalRollo || 0}</td>
+                <td hidden>${acckg}</td>
+                <td contenteditable="true" class="editable" onblur="getCellValueMetrosLineales(this)" onkeydown="handleKeyDownTelas(event, this)">${newelement.MetrosLineales || 0}</td>
+                <td hidden>${accml}</td>
+            </tr>
+        `;
+        presentacion = newelement.Clave;
+    });
+    
+    // Agregar fila de total
+    body += `<tr>
+                <td class="fw-bold">Total</td>
+                <td>${acckg}</td>
+                <td>${accml}</td>
+            </tr>`;
+    
+    // Agregar botón de agregar rollo
+    body += `<tr>
+                <td colspan="3" class="text-center">
+                    <button class="btn btn-sm bg-target" onclick="agregarRollo(${respuesta[0]?.idPT || 0})">
+                        <i class="fas fa-plus"></i> Agregar Rollo
+                    </button>
+                </td>
+            </tr>`;
+    
+    // Cargar la primera tabla con el nuevo registro
+    document.getElementById(domtbl).innerHTML = body;
+    
+    // Agregar nueva fila a la segunda tabla (sin borrar la existente)
+    if (respuesta[0]) {
+        const nuevaFila = `
+            <tr data-id="${respuesta[0].idSD}">
+                <td contenteditable="true" class="editable"
+                    onblur="getCellValueBobinas(this)"
+                    onkeydown="handleKeyDownTelas(event, this)">
+                    ${respuesta[0].NoBajada || 0}
+                </td>
+                <td contenteditable="true" class="editable"
+                    onblur="getCellValueBobinas(this)"
+                    onkeydown="handleKeyDownTelas(event, this)">
+                    ${respuesta[0].bobinas || 0}
+                </td>
+                <td>${(respuesta[0].ptcb || 0).toFixed(3)}</td>
+                <td>${respuesta[0].mlBajada || 0}</td>
+                <td>${(respuesta[0].mm2Bajada || 0).toFixed(3)}</td>
+                <td>${respuesta[0].ancho || 0}</td>
+                <td>${(respuesta[0].kgmb || 0).toFixed(3)}</td>
+                <td>${respuesta[0].pesoBase || 0}</td>
+            </tr>
+        `;
+        
+        // Agregar la nueva fila sin borrar las existentes
+        document.getElementById(domtbl2).insertAdjacentHTML('beforeend', nuevaFila);
+    }
+}
