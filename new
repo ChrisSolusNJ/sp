@@ -1,144 +1,210 @@
-Primeramente tengo esta funcion
+Dentro de esas funciones llaman a estas en php
 
-document.getElementById("savePresentacion1Spooler").addEventListener("click", (e) => {
-  e.preventDefault();
-  const folio = document.getElementById("folio").value;
-  const presentacion = document.getElementById("presentacion1Spooler").value;
-  const turnoen = document.getElementById("turnoenctext").textContent;
-  if(presentacion == "") {
-    swal.fire("Cuidado", "Debes seleccionar una clave", "warning");
-    return false;
-  }
+    function savePresentacionSpooler(){
+        
+        $Conecta = new ClassConexion();
+        $conn = $Conecta->conexion("TLX004MXDB");
+        $folio = $_POST["folio"];
+        $presentacion = $_POST["presentacion"];
+        $notbl = $_POST["notbl"];
+        $array = array();
+        $query = "INSERT INTO tblMXPRProduccionTNTEnc (folio,Clave, NoTabla) VALUES (?,?,?)";
+        $result = sqlsrv_query($conn, $query, array($folio, $presentacion, $notbl));
+        http_response_code(200);
+        if ($result === false) {
+            if (($errors = sqlsrv_errors()) != null) {
+                foreach ($errors as $error) {
+                    echo "SQLSTATE: " . $error['SQLSTATE'] . "<br />";
+                    echo "code: " . $error['code'] . "<br />";
+                    echo "message: " . $error['message'] . "<br />";
+                }
+            }
+            http_response_code(500);
+        } else {
+            $sql = "SELECT @@IDENTITY AS last_id";
+            $stmt = sqlsrv_query($conn, $sql);
+            $row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
+            $last_id = $row['last_id'];
 
-  document.getElementById("presentacion1Spooler").disabled = true;
-  document.getElementById("savePresentacion1Spooler").disabled = true;
-  Presentaciones.savePresentacionSpooler(folio, presentacion, turnoen, 1).then(() => {
-      Presentaciones.tblPresentacionSubSpooler(folio, 1, "tblpresentacionsub1Spooler", "tblClaveSubSpooler1");
-  });
-});
-
-Que manda a llamar a dos funciones, una llamada savePresentacionSpooler y dependiendo del resultado llama a tblPresentacionSubSpooler, las dos funciones son las siguientes
-
-  async savePresentacionSpooler(folio, presentacion, turnoen, notbl) {
-    const data = new FormData();
-    data.append("folio", folio);
-    data.append("presentacion", presentacion);
-    data.append("turnoen", turnoen);
-    data.append("notbl", notbl);
-    const respuestaraw = await fetch(
-      "php/presentacion.php?savePresentacionSpooler",
-      {
-        method: "POST",
-        body: data,
-      },
-    );
-     respuestaraw.status === 200 &&
-      swal.fire("Listo", "La acción se completo correctamente", "success");
-      this.recargarTblPresentacionSubSpooler();
-    respuestaraw.status === 500 &&
-      swal.fire(
-        "ERROR",
-        "Hay problema al guardar en la base de datos",
-        "error",
-      );
-  }
-
-
-
-  // Tabla de Spooler
-  async tblPresentacionSubSpooler(folio, notbl, domtbl, domtbl2) {
-    const data = new FormData();
-    let body = "";
-    let body2 = "";
-    let presentacion = "";
-    data.append("folio", folio);
-    data.append("notbl", notbl);
-    // Obtener datos desde el servidor
-    const respuestaraw = await fetch(
-      "php/presentacion.php?tblPresentacionSubSpooler",
-      {
-        method: "POST",
-        body: data,
-      },
-    );
-    const respuesta = await respuestaraw.json();
-    // Procesar los datos recibidos
-    let acckg = 0;
-    let accml = 0;
-    let idRollo = 0;
-    let idBajada = 0;
-    respuesta.forEach((newelement) => {
-      acckg = Math.round((acckg + newelement.KGTotalRollo) * 1000) / 1000;
-      accml = Math.round((accml + newelement.MetrosLineales) * 1000) / 1000;
-      idRollo = newelement.idPT;
-      idBajada = newelement.idSD;
-      body += `
-          <tr data-id="${newelement.idSU}">
-            <td contenteditable="true" class="editable" onblur="getCellValueRollos(this)" onkeydown="handleKeyDownTelas(event, this)">${newelement.NoRollo || 0}</td>
-            <td>${newelement.KGTotalRollo || 0}</td>
-            <td hidden>${acckg}</td>
-            <td contenteditable="true" class="editable" onblur="getCellValueMetrosLineales(this)" onkeydown="handleKeyDownTelas(event, this)">${newelement.MetrosLineales || 0}</td>
-            <td hidden>${accml}</td>
-          </tr>
-      `;
-      presentacion = newelement.Clave;
-      this.savePresentacionAdicionalSpooler(
-        newelement.idSU,
-        newelement.NoRollo,
-        newelement.KGTotalRollo,
-        acckg
-      );
-      this.updateMetrosLinealesRollo(
-        newelement.idSU,
-        newelement.MetrosLineales,
-        accml
-      )
-    });
-   
-  const { mlBajada, mm2Bajada, ptcb, kgmb } =
-    calcularBajada(respuesta, acckg, accml);
-
-    if(body !== ""){
-      document.getElementById("presentacion" + notbl + "Spooler").value = presentacion;
-      document.getElementById("presentacion" + notbl + "Spooler").disabled =
-          true;
-        document.getElementById("savePresentacion" + notbl + "Spooler").disabled =
-          true;
-      body += `<tr>
-                <td class="fw-bold">Total</td>
-                <td>${acckg}</td>
-                <td>${accml}</td>
-              </tr>`;
-      body += `<tr>
-                <td colspan="6" class="text-center">
-                  <button class="btn btn-sm bg-target" onclick="agregarRollo(${idRollo})" this.disabled=true;>
-                    <i class="fas fa-plus"></i> Agregar Rollo
-                  </button>
-                </td>
-              </tr>`;
-       body2 += `
-              <tr data-id="${idBajada}">
-                <td contenteditable="true" class="editable"
-                    onblur="getCellValueBobinas(this)"
-                    onkeydown="handleKeyDownTelas(event, this)">
-                  ${respuesta[0].NoBajada || 0}
-                </td>
-                <td contenteditable="true" class="editable"
-                    onblur="getCellValueBobinas(this)"
-                    onkeydown="handleKeyDownTelas(event, this)">
-                  ${respuesta[0].bobinas || 0}
-                </td>
-                <td>${ptcb.toFixed(3)}</td>
-                <td>${mlBajada}</td>
-                <td>${mm2Bajada.toFixed(3)}</td>
-                <td>${respuesta[0].ancho}</td>
-                <td>${kgmb.toFixed(3)}</td>
-                <td>${respuesta[0].pesoBase}</td>
-              </tr>`;
+            $this->InsertarDataSpooler($last_id);
+            http_response_code(200);
+        }
     }
-   
 
-    document.getElementById(domtbl).innerHTML = body;
-    document.getElementById(domtbl2).innerHTML = body2;
+function tblPresentacionSubSpooler(){
+        $Conecta = new ClassConexion();
+        $conn = $Conecta->conexion("TLX004MXDB");
+        $folio = $_POST['folio'];
+        $notbl = $_POST['notbl'];
+        $query = "SELECT tblSU.[id] AS idSpoolerUno,tblEPT.folio,tblSU.[idPT],tblEPT.Clave,tblVEC.Descripcion_Articulo AS Descripcion
+                        ,[NoRollo],[KGTotalRollo],[AccKG],[MetrosLineales],[AccML],tblSD.id AS idSpoolerDos, tblSD.NoBajada
+                        ,tblSD.bobinas,tblSD.KgTotalesBajada,tblSD.MLBajada,tblSD.MMCBajada,tblVEC.ancho,tblSD.KgMBajada
+                        ,tblVEC.pesoBase,tblSD.Comentarios
+                    FROM [TLX004MXDB].[dbo].[tblMXPRProduccionTNTSpoolerUno] tblSU
+                    LEFT JOIN TLX004MXDB.dbo.tblMXPRProduccionTNTEnc tblEPT ON tblEPT.idPT = tblSU.idPT
+                    LEFT JOIN TLX002MXDB.dbo.tblValeEClaves tblVEC ON tblVEC.NoClave = tblEPT.Clave
+                    LEFT JOIN TLX004MXDB.dbo.tblMXPRProduccionTNTSpoolerDos tblSD ON tblSD.idPT = tblSU.idPT
+                    WHERE tblEPT.folio = ? AND tblEPT.NoTabla = ?";
+        $params = array($folio,$notbl);
+        $result = sqlsrv_query($conn, $query, $params);
+        
+        $result = sqlsrv_query($conn, $query, $params);
+
+        if ($result === false) {
+            die(print_r(sqlsrv_errors(), true));
+        }
+
+        $array = array();
+        while ($row = sqlsrv_fetch_array($result)) {
+            array_push($array, [
+                'idSU' => $row['idSpoolerUno'],
+                'idPT' => $row['idPT'],
+                'folio' => $row['folio'],
+                'Clave' => $row['Clave'],
+                'Descripcion' => $row['Descripcion'],
+                'NoRollo' => $row['NoRollo'],
+                'KGTotalRollo' => $row['KGTotalRollo'],
+                'AccKG' => $row['AccKG'],
+                'MetrosLineales' => $row['MetrosLineales'],
+                'AccML' => $row['AccML'],
+                'idSD' => $row['idSpoolerDos'],
+                'NoBajada' => $row['NoBajada'],
+                'bobinas' => $row['bobinas'],
+                'KgTotalesBajada' => $row['KgTotalesBajada'],
+                'MLBajada' => $row['MLBajada'],
+                'MMCBajada' => $row['MMCBajada'],
+                'ancho' => $row['ancho'],
+                'KgMBajada' => $row['KgMBajada'],
+                'pesoBase' => $row['pesoBase'],
+                'Comentarios' => $row['Comentarios']
+            ]);
+        }
+        echo json_encode($array);
+    }
+
+
+function InsertarDataSpooler($idpresentacionenc)
+    {
+        $Conecta = new ClassConexion();
+        $conn = $Conecta->conexion("TLX004MXDB");
+        
+        // Iniciar transacción
+        sqlsrv_begin_transaction($conn);
+    
+        // Insert tabla 1
+        $query1 = "INSERT INTO tblMXPRProduccionTNTSpoolerUno(idPt,NoRollo,KGTotalRollo,AccKG,MetrosLineales,AccML) 
+                    VALUES (?, ?, ?, ?, ?, ?) ";
+        $params1 = array($idpresentacionenc, 0, 0, 0, 0, 0);
+        $stmt1 = sqlsrv_query($conn, $query1, $params1);
+
+        //Insert tabla 2
+        $query2 = "INSERT INTO tblMXPRProduccionTNTSpoolerDos(idPT,NoBajada,bobinas,KgTotalesBajada,MLBajada,MMCBajada,KgMBajada,Comentarios) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?) ";
+        $params2 = array($idpresentacionenc, 0, 0, 0, 0, 0, 0, "");
+        $stmt2 = sqlsrv_query($conn, $query2, $params2);
+
+        // Validar ambas insercciones
+        if($stmt1 && $stmt2){
+            sqlsrv_commit($conn);
+            return true;
+        } else {
+            sqlsrv_rollback($conn);
+            return false;
+        }
+
+    }
+
+
+
+Que son las que me permiten guardar y visualizar los datos de las tablas
+
+Luego dentro de tblPresentacionSubSpooler tengo lo siguiente
+
+async getCellValueRollos(cell) {
+    const folio = document.getElementById("folio").value;
+    // Obtener el valor ingresado (número de rollo)
+    const rolloNumber = cell.innerText.trim();
+    // Validar que no esté vacío
+    if (!rolloNumber) return;
+    // Obtener la fila (tr) a la que pertenece esta celda
+    const row = cell.closest('tr');
+    // Obtener el ID del registro (data-id de la fila)
+    const recordId = row.getAttribute('data-id');
+    const cells = row.querySelectorAll("td");
+    // Crear FormData para la petición
+    const data = new FormData();
+    data.append("rollo", rolloNumber);
+    try {
+        // Realizar la petición al servidor para buscar el rollo
+        const response = await fetch("php/presentacion.php?buscarRollo", {
+            method: "POST",
+            body: data
+        });
+        const result = await response.json();
+        if (result.success && result.data) {
+            // Actualizar la celda de KG (segunda celda de la fila, índice 1)
+            const kgCell = row.cells[1]; // La celda de KG está en el índice 1
+            kgCell.innerText = result.data[0].PesoTotal; 
+            this.savePresentacionAdicionalSpooler(
+              recordId,
+              rolloNumber,
+              result.data[0].PesoTotal,
+              cells[2].innerText, // Acumulado KG
+            ).then(() => {
+              const table = cell.closest("table");
+              table.id === "tablapresentacion1Spooler" &&
+                this.tblPresentacionSubSpooler(folio, 1, "tblpresentacionsub1Spooler", "tblClaveSubSpooler1");
+              table.id === "tablapresentacion2Spooler" &&
+                this.tblPresentacionSubSpooler(folio, 2, "tblpresentacionsub2Spooler", "tblClaveSubSpooler2");
+              table.id === "tablapresentacion3Spooler" &&
+                this.tblPresentacionSubSpooler(folio, 3, "tblpresentacionsub3Spooler", "tblClaveSubSpooler3");
+            });
+        } else {
+            console.log(`Rollo ${rolloNumber} no encontrado`);
+            // Opcional: Mostrar mensaje al usuario
+            // alert(`El rollo ${rolloNumber} no existe en la base de datos`);
+        }
+    } catch (error) {
+        console.error("Error al buscar el rollo:", error);
+    }
   }
+
+  getCellValueMetrosLineales(cell){
+    const folio = document.getElementById("folio").value;
+    const metrosLineales = cell.innerText.trim();
+    const row = cell.closest('tr');
+    const rolloId = row.getAttribute('data-id');
+    const cells = row.querySelectorAll("td");
+    this.updateMetrosLinealesRollo(rolloId, metrosLineales, cells[4].innerText).then(() => {
+      const table = cell.closest("table");
+      table.id === "tablapresentacion1Spooler" &&
+        this.tblPresentacionSubSpooler(folio, 1, "tblpresentacionsub1Spooler", "tblClaveSubSpooler1");
+      table.id === "tablapresentacion2Spooler" &&
+        this.tblPresentacionSubSpooler(folio, 2, "tblpresentacionsub2Spooler", "tblClaveSubSpooler2");
+      table.id === "tablapresentacion3Spooler" &&
+        this.tblPresentacionSubSpooler(folio, 3, "tblpresentacionsub3Spooler", "tblClaveSubSpooler3");
+    });
+  }
+
+  getCellValueBobinas(cell){
+    const folio = document.getElementById("folio").value;
+    const row = cell.closest('tr');
+    const rolloId = row.getAttribute('data-id');
+    const cells = row.querySelectorAll("td");
+    const cellIndex = Array.from(row.children).indexOf(cell);
+    let NoBajada = cellIndex === 0 ? cell.innerText.trim() : cells[0].innerText.trim();
+    let bobinas = cellIndex === 1 ? cell.innerText.trim() : cells[1].innerText.trim();
+    const table = cell.closest("table");
+    this.saveBajadasBobinas(rolloId, NoBajada, bobinas, cells[2].innerText.trim(), cells[3].innerText.trim(), cells[4].innerText.trim(), cells[6].innerText.trim()).then(() => {
+      
+      table.id === "tablapresentacion1Spooler" &&
+        this.tblPresentacionSubSpooler(folio, 1, "tblpresentacionsub1Spooler", "tblClaveSubSpooler1");
+      table.id === "tablapresentacion2Spooler" &&
+        this.tblPresentacionSubSpooler(folio, 2, "tblpresentacionsub2Spooler", "tblClaveSubSpooler2");
+      table.id === "tablapresentacion3Spooler" &&
+        this.tblPresentacionSubSpooler(folio, 3, "tblpresentacionsub3Spooler", "tblClaveSubSpooler3");
+    });
+  }
+
+hasta ahi termina el paso 2 vale?
 
