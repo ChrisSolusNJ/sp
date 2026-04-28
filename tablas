@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Tablas Relacionadas</title>
+<style>
+  body { font-family: Arial; padding: 20px; }
+  table { border-collapse: collapse; margin-top: 15px; }
+  th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+  button { margin: 5px; }
+  input { width: 80px; }
+  .total { background:#f2f2f2; font-weight:bold; }
+</style>
+</head>
+<body>
+
+<h2>Selecciona una clave</h2>
+<select id="selector">
+  <option value="">-- Selecciona --</option>
+  <option value="A">Clave A</option>
+  <option value="B">Clave B</option>
+</select>
+
+<div id="contenedor" style="display:none;">
+
+<h3>Tabla 1</h3>
+<button onclick="agregarFilaTabla1()">Agregar fila</button>
+<table id="tabla1">
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>Valor 1</th>
+      <th>Valor 2</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<h3>Tabla 2 (Acumulado)</h3>
+<table id="tabla2">
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>IDT1</th>
+      <th>V1</th>
+      <th>V2</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<h3>Tabla 3 (Histórico)</h3>
+<button onclick="procesar()">Procesar</button>
+<table id="tabla3">
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>IDT1</th>
+      <th>V1</th>
+      <th>V2</th>
+      <th>V3</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+</div>
+
+<script>
+let tabla1 = [];
+let tabla2 = [];
+let tabla3 = [];
+
+let idT1 = 1;
+let idT2 = 1;
+let idT3 = 1;
+
+let backend = {
+  tabla1: [],
+  tabla2: [],
+  tabla3: []
+};
+
+let currentIdT1 = null;
+
+document.getElementById("selector").addEventListener("change", function() {
+  if (this.value) {
+    document.getElementById("contenedor").style.display = "block";
+    inicializar();
+  }
+});
+
+function inicializar() {
+  tabla1 = [];
+  tabla2 = [];
+  tabla3 = [];
+
+  idT1 = 1;
+  idT2 = 1;
+  idT3 = 1;
+
+  currentIdT1 = idT1++;
+
+  tabla1 = [{ id: 1, val1: 0, val2: 0 }];
+
+  renderTabla1();
+  renderTabla2();
+  renderTabla3();
+}
+
+function agregarFilaTabla1() {
+  tabla1.push({ id: tabla1.length + 1, val1: 0, val2: 0 });
+  renderTabla1();
+}
+
+function renderTabla1() {
+  const tbody = document.querySelector("#tabla1 tbody");
+  tbody.innerHTML = "";
+
+  let total1 = 0;
+  let total2 = 0;
+
+  tabla1.forEach(row => {
+    total1 += row.val1;
+    total2 += row.val2;
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${row.id}</td>
+      <td><input type="number" value="${row.val1}" onchange="editar(${row.id}, 'val1', this.value)"></td>
+      <td><input type="number" value="${row.val2}" onchange="editar(${row.id}, 'val2', this.value)"></td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  const trTotal = document.createElement("tr");
+  trTotal.classList.add("total");
+  trTotal.innerHTML = `
+    <td>TOTAL</td>
+    <td>${total1}</td>
+    <td>${total2}</td>
+  `;
+  tbody.appendChild(trTotal);
+}
+
+function editar(id, campo, valor) {
+  const fila = tabla1.find(f => f.id === id);
+  if (fila) fila[campo] = Number(valor);
+  renderTabla1();
+}
+
+function procesar() {
+  if (tabla1.length === 0) return;
+
+  let total1 = 0;
+  let total2 = 0;
+
+  tabla1.forEach(r => {
+    total1 += r.val1;
+    total2 += r.val2;
+  });
+
+  const total3 = total1 + total2;
+
+  tabla2.push({
+    id: idT2++,
+    idt1: currentIdT1,
+    v1: total1,
+    v2: total2,
+    v3: total3
+  });
+
+  tabla3.push({
+    id: idT3++,
+    idt1: currentIdT1,
+    v1: total1,
+    v2: total2,
+    v3: total3
+  });
+
+  backend.tabla1.push({ idt1: currentIdT1 });
+  backend.tabla2 = JSON.parse(JSON.stringify(tabla2));
+  backend.tabla3 = JSON.parse(JSON.stringify(tabla3));
+
+  currentIdT1 = idT1++;
+
+  tabla1 = [{ id: 1, val1: 0, val2: 0 }];
+
+  renderTabla1();
+  renderTabla2();
+  renderTabla3();
+
+  console.log("Backend:", backend);
+}
+
+function renderTabla2() {
+  const tbody = document.querySelector("#tabla2 tbody");
+  tbody.innerHTML = "";
+
+  tabla2.forEach(r => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${r.id}</td>
+      <td>${r.idt1}</td>
+      <td>${r.v1}</td>
+      <td>${r.v2}</td>
+      <td>${r.v3}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function renderTabla3() {
+  const tbody = document.querySelector("#tabla3 tbody");
+  tbody.innerHTML = "";
+
+  tabla3.forEach(r => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${r.id}</td>
+      <td>${r.idt1}</td>
+      <td>${r.v1}</td>
+      <td>${r.v2}</td>
+      <td>${r.v3}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+</script>
+
+</body>
+</html>
