@@ -2,31 +2,36 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Tablas Relacionadas</title>
-<style>
-  body { font-family: Arial; padding: 20px; }
-  table { border-collapse: collapse; margin-top: 15px; }
-  th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
-  button { margin: 5px; }
-  input { width: 80px; }
-  .total { background:#f2f2f2; font-weight:bold; }
-</style>
+<title>Presentaciones SQL</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
-<body>
+<body class="p-4">
 
-<h2>Selecciona una clave</h2>
-<select id="selector">
-  <option value="">-- Selecciona --</option>
-  <option value="A">Clave A</option>
-  <option value="B">Clave B</option>
-</select>
+<div class="container">
 
-<div id="contenedor" style="display:none;">
+<h3 class="mb-3">Presentaciones</h3>
 
-<h3>Tabla 1</h3>
-<button onclick="agregarFilaTabla1()">Agregar fila</button>
-<table id="tabla1">
-  <thead>
+<ul class="nav nav-tabs mb-3">
+  <li class="nav-item"><button class="nav-link active" onclick="cambiarPresentacion(1)">Presentación 1</button></li>
+  <li class="nav-item"><button class="nav-link" onclick="cambiarPresentacion(2)">Presentación 2</button></li>
+  <li class="nav-item"><button class="nav-link" onclick="cambiarPresentacion(3)">Presentación 3</button></li>
+</ul>
+
+<div class="mb-3">
+  <label class="form-label">Seleccionar Clave</label>
+  <select class="form-select" id="selectorClave" onchange="cambiarClave(this.value)">
+    <option value="A">Clave A</option>
+    <option value="B">Clave B</option>
+    <option value="C">Clave C</option>
+  </select>
+</div>
+
+<div class="mb-3">
+  <button class="btn btn-primary" onclick="agregarFila()">Agregar fila</button>
+</div>
+
+<table class="table table-bordered" id="tabla1">
+  <thead class="table-dark">
     <tr>
       <th>ID</th>
       <th># Rollo</th>
@@ -37,218 +42,241 @@
   <tbody></tbody>
 </table>
 
-<h3>Tabla 2 (Acumulado)</h3>
-<table id="tabla2">
-  <thead>
-    <tr>
-      <th>ID</th>
-      <th>IDT1</th>
-      <th>V1</th>
-      <th>V2</th>
-    </tr>
-  </thead>
-  <tbody></tbody>
+<button class="btn btn-success mb-3" onclick="procesar()">Procesar</button>
+
+<h5>Tabla 2</h5>
+<table class="table table-bordered" id="tabla2">
+<thead class="table-dark">
+<tr><th>ID</th><th>IDT1</th><th>V1</th><th>V2</th><th>V3</th></tr>
+</thead>
+<tbody></tbody>
 </table>
 
-<h3>Tabla 3 (Histórico)</h3>
-<button onclick="procesar()">Procesar</button>
-<table id="tabla3">
-  <thead>
-    <tr>
-      <th>ID</th>
-      <th>IDT1</th>
-      <th>V1</th>
-      <th>V2</th>
-      <th>V3</th>
-    </tr>
-  </thead>
-  <tbody></tbody>
+<h5>Tabla 3</h5>
+<table class="table table-bordered" id="tabla3">
+<thead class="table-dark">
+<tr><th>ID</th><th>IDT1</th><th>V1</th><th>V2</th><th>V3</th></tr>
+</thead>
+<tbody></tbody>
 </table>
 
 </div>
 
 <script>
-let tabla1 = [];
-let tabla2 = [];
-let tabla3 = [];
-
-let idT1 = 1;
-let idT2 = 1;
-let idT3 = 1;
-
-let backend = {
-  tabla1: [],
-  tabla2: [],
-  tabla3: []
+// estado por presentación
+const presentaciones = {
+  1: crearEstado(),
+  2: crearEstado(),
+  3: crearEstado()
 };
 
-let currentIdT1 = null;
+let presentacionActiva = 1;
 
-document.getElementById("selector").addEventListener("change", function() {
-  if (this.value) {
-    document.getElementById("contenedor").style.display = "block";
-    inicializar();
-  }
-});
-
-function inicializar() {
-  tabla1 = [];
-  tabla2 = [];
-  tabla3 = [];
-
-  idT1 = 1;
-  idT2 = 1;
-  idT3 = 1;
-
-  currentIdT1 = idT1++;
-
-  tabla1 = [{ id: 1, val1: 0, val2: 0 }];
-
-  renderTabla1();
-  renderTabla2();
-  renderTabla3();
+function crearEstado(){
+  return {
+    clave:'A',
+    tabla1:[{id:1,val1:0,val2:0}],
+  };
 }
 
-function agregarFilaTabla1() {
-  tabla1.push({ id: tabla1.length + 1, val1: 0, val2: 0 });
-  renderTabla1();
+function getP(){ return presentaciones[presentacionActiva]; }
+
+function cambiarPresentacion(num){
+  presentacionActiva = num;
+
+  document.querySelectorAll('.nav-link').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.nav-link')[num-1].classList.add('active');
+
+  document.getElementById('selectorClave').value = getP().clave;
+
+  renderT1();
+  cargarHistorial();
 }
 
-function renderTabla1() {
-  const tbody = document.querySelector("#tabla1 tbody");
-  tbody.innerHTML = "";
+function cambiarClave(clave){
+  const p = getP();
+  p.clave = clave;
+  cargarHistorial();
+}
 
-  let total1 = 0;
-  let total2 = 0;
+function agregarFila(){
+  const p = getP();
+  p.tabla1.push({id:p.tabla1.length+1,val1:0,val2:0});
+  renderT1();
+}
 
-  tabla1.forEach(row => {
-    total1 += row.val1;
-    total2 += row.val2;
+async function editarRollo(id, rollo){
+  const p = getP();
+  const fila = p.tabla1.find(f=>f.id===id);
+  if(!fila) return;
 
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${row.id}</td>
-      <td><input type="number" value="${row.rollo || ''}" onchange="editarRollo(${row.id}, this.value)"></td>
-      <td>${row.val1}</td>
-      <td><input type="number" value="${row.val2}" onchange="editar(${row.id}, 'val2', this.value)"></td>
-    `;
-    tbody.appendChild(tr);
+  const res = await fetch('php/getRollo.php',{
+    method:'POST',
+    body:new URLSearchParams({rollo})
   });
 
-  const trTotal = document.createElement("tr");
-  trTotal.classList.add("total");
-  trTotal.innerHTML = `
-    <td>TOTAL</td>
-    <td></td>
-    <td>${total1}</td>
-    <td>${total2}</td>
-  `;
-  tbody.appendChild(trTotal);
+  const data = await res.json();
+
+  fila.rollo = rollo;
+  fila.val1 = data.valor || 0;
+
+  renderT1();
 }
 
-// catálogo simulado de rollos
-const catalogoRollos = {
-  1: 312,
-  2: 312,
-  3: 312
-};
-
-function editarRollo(id, rollo) {
-  const fila = tabla1.find(f => f.id === id);
-  if (!fila) return;
-
-  fila.rollo = Number(rollo);
-
-  // traer valor automáticamente
-  fila.val1 = catalogoRollos[rollo] || 0;
-
-  renderTabla1();
+function editar(id, campo, valor){
+  const p = getP();
+  const fila = p.tabla1.find(f=>f.id===id);
+  if(fila) fila[campo]=Number(valor);
+  renderT1();
 }
 
-function editar(id, campo, valor) {
-  const fila = tabla1.find(f => f.id === id);
-  if (fila) fila[campo] = Number(valor);
-  renderTabla1();
-}
+async function procesar(){
+  const p = getP();
 
-function procesar() {
-  if (tabla1.length === 0) return;
+  let total1=0,total2=0;
+  p.tabla1.forEach(r=>{ total1+=r.val1; total2+=r.val2; });
 
-  let total1 = 0;
-  let total2 = 0;
-
-  tabla1.forEach(r => {
-    total1 += r.val1;
-    total2 += r.val2;
+  await fetch('php/procesar.php',{
+    method:'POST',
+    body:new URLSearchParams({
+      clave:p.clave,
+      v1:total1,
+      v2:total2
+    })
   });
 
-  const total3 = total1 + total2;
+  p.tabla1 = [{id:1,val1:0,val2:0}];
 
-  tabla2.push({
-    id: idT2++,
-    idt1: currentIdT1,
-    v1: total1,
-    v2: total2,
-    v3: total3
-  });
-
-  tabla3.push({
-    id: idT3++,
-    idt1: currentIdT1,
-    v1: total1,
-    v2: total2,
-    v3: total3
-  });
-
-  backend.tabla1.push({ idt1: currentIdT1 });
-  backend.tabla2 = JSON.parse(JSON.stringify(tabla2));
-  backend.tabla3 = JSON.parse(JSON.stringify(tabla3));
-
-  currentIdT1 = idT1++;
-
-  tabla1 = [{ id: 1, val1: 0, val2: 0 }];
-
-  renderTabla1();
-  renderTabla2();
-  renderTabla3();
-
-  console.log("Backend:", backend);
+  renderT1();
+  cargarHistorial();
 }
 
-function renderTabla2() {
-  const tbody = document.querySelector("#tabla2 tbody");
-  tbody.innerHTML = "";
+function renderT1(){
+  const p = getP();
+  const tbody = document.querySelector('#tabla1 tbody');
+  tbody.innerHTML='';
 
-  tabla2.forEach(r => {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
+  let t1=0,t2=0;
+
+  p.tabla1.forEach(r=>{
+    t1+=r.val1;
+    t2+=r.val2;
+
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
       <td>${r.id}</td>
-      <td>${r.idt1}</td>
-      <td>${r.v1}</td>
-      <td>${r.v2}</td>
-      <td>${r.v3}</td>
+      <td><input class="form-control" type="number" onchange="editarRollo(${r.id},this.value)"></td>
+      <td>${r.val1}</td>
+      <td><input class="form-control" type="number" value="${r.val2}" onchange="editar(${r.id},'val2',this.value)"></td>
     `;
     tbody.appendChild(tr);
   });
+
+  const tr=document.createElement('tr');
+  tr.classList.add('table-secondary');
+  tr.innerHTML=`<td>TOTAL</td><td></td><td>${t1}</td><td>${t2}</td>`;
+  tbody.appendChild(tr);
 }
 
-function renderTabla3() {
-  const tbody = document.querySelector("#tabla3 tbody");
-  tbody.innerHTML = "";
+async function cargarHistorial(){
+  const p = getP();
 
-  tabla3.forEach(r => {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${r.id}</td>
-      <td>${r.idt1}</td>
-      <td>${r.v1}</td>
-      <td>${r.v2}</td>
-      <td>${r.v3}</td>
-    `;
-    tbody.appendChild(tr);
+  const res = await fetch('php/getHistorial.php?clave='+p.clave);
+  const data = await res.json();
+
+  const t2 = document.querySelector('#tabla2 tbody');
+  const t3 = document.querySelector('#tabla3 tbody');
+
+  t2.innerHTML='';
+  t3.innerHTML='';
+
+  data.tabla2.forEach(r=>{
+    t2.innerHTML += `<tr><td>${r.id}</td><td>${r.idt1}</td><td>${r.v1}</td><td>${r.v2}</td><td>${r.v3}</td></tr>`;
+  });
+
+  data.tabla3.forEach(r=>{
+    t3.innerHTML += `<tr><td>${r.id}</td><td>${r.idt1}</td><td>${r.v1}</td><td>${r.v2}</td><td>${r.v3}</td></tr>`;
   });
 }
+
+// init
+cambiarPresentacion(1);
 </script>
+
+<!-- ================== SQL MYSQL ================== -->
+<!--
+CREATE DATABASE presentaciones_db;
+USE presentaciones_db;
+
+-- Tabla1 (Encabezado)
+CREATE TABLE tabla1 (
+  idt1 INT AUTO_INCREMENT PRIMARY KEY,
+  clave VARCHAR(10) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Tabla2 (Acumulado)
+CREATE TABLE tabla2 (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  idt1 INT,
+  clave VARCHAR(10),
+  v1 DECIMAL(10,2),
+  v2 DECIMAL(10,2),
+  FOREIGN KEY (idt1) REFERENCES tabla1(idt1)
+);
+
+-- Tabla3 (Histórico)
+CREATE TABLE tabla3 (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  idt1 INT,
+  clave VARCHAR(10),
+  v1 DECIMAL(10,2),
+  v2 DECIMAL(10,2),
+  v3 DECIMAL(10,2),
+  FOREIGN KEY (idt1) REFERENCES tabla1(idt1)
+);
+
+-- Catálogo de Rollos
+CREATE TABLE catalogo_rollos (
+  rollo INT PRIMARY KEY,
+  valor DECIMAL(10,2)
+);
+
+-- Datos de prueba
+INSERT INTO catalogo_rollos (rollo, valor) VALUES
+(1, 312),
+(2, 312),
+(3, 312);
+-- ================================================
+-- EJEMPLO DE FLUJO (para probar manual)
+-- ================================================
+-- 1. Insert encabezado
+-- INSERT INTO tabla1 (clave) VALUES ('A');
+-- SET @idt1 = LAST_INSERT_ID();
+
+-- 2. Insert acumulado
+-- INSERT INTO tabla2 (idt1, clave, v1, v2) VALUES (@idt1, 'A', 4, 6);
+
+-- 3. Insert histórico
+-- INSERT INTO tabla3 (idt1, clave, v1, v2, v3) VALUES (@idt1, 'A', 4, 6, 10);
+-- ================================================
+-- CONSULTAS
+-- ================================================
+-- SELECT * FROM tabla2 WHERE clave = 'A';
+-- SELECT * FROM tabla3 WHERE clave = 'A';
+-- ================================================
+--
+-- NOTAS IMPORTANTES:
+-- - idt1 conecta las 3 tablas
+-- - clave permite filtrar por presentación
+-- - tabla2 = acumulado
+-- - tabla3 = histórico real
+-- ================================================
+--
+-- Listo para usar con tu frontend 🚀
+--
+-- ================================================
+-->
 
 </body>
 </html>
