@@ -1,107 +1,212 @@
-<div class="row">
-                    <div class="col-4" style="width: 33%;">
-                        <div class="row">
-                            <div class="col-9">
-                                
-                            </div>
-                           
-                            <div class="table-responsive my-2" style="height: 300px;">
-                                <table id="tablapresentacion1Spooler" class="table table-bordered">
-                                    <thead class="table-dark">
-                                        <th># Rollo</th>
-                                        <th>Peso Total (KG)</th>
-                                        <th>Metros Lineales</th>
-                                    </thead>
-                                    <tbody id="tblpresentacionsub1Spooler">
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="card col-7" style="padding: 0;">
-                                <!-- <h5 class="card-header">Featured</h5> -->
-                                 <div class="card-header">
-                                    <div class="row">
-                                        <div class="col-9">
-                                            <small>Presentacion</small>
-                                            <select class="form-control form-control-sm"
-                                            id="presentacion1Spooler"></select>
-                                        </div>
-                                        <div class="col-1">
-                                            <br>
-                                            <button class="btn btn-sm bg-target" id="savePresentacion1Spooler"><i
-                                            class="fas fa-play"></i></button>
-                                        </div>
-                                        <div class="col-1">
-                                            <br>
-                                            <button class="btn btn-sm btn-danger" id="resetPresentacion1Spooler"><i
-                                                    class="fas fa-trash"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-                                 </div>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Spooler Demo</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
 
-                                    <div class="card-body">
-                                        <div class="row">
-                                            <div class="col-2">
-                                                <small># Bajada</small>
-                                                <input type="text" class="form-control form-control-sm" id="bajadaSpooler1">
-                                            </div>
-                                            <div class="col-2">
-                                                <small># Bobinas</small>
-                                                <input type="number" class="form-control form-control-sm" id="bobinasSpooler1">
-                                            </div>
-                                            <div class="col-2">
-                                                <small>KG Carretes Bajada</small>
-                                                <input type="number" class="form-control form-control-sm" id="kgcbSpooler1" disabled>
-                                            </div>
-                                            <div class="col-2">
-                                                <small>ML Bajada</small>
-                                                <input type="number" class="form-control form-control-sm" id="mlbajadaSpooler1" disabled>
-                                            </div>
-                                            <div class="col-2">
-                                                <small>MM2 Bajada</small>
-                                                <input type="number" class="form-control form-control-sm" id="mm2bajadaSpooler1" disabled>
-                                            </div>
-                                            <div class="col-2">
-                                                <small>MM2 Bajada</small>
-                                                <input type="number" class="form-control form-control-sm" id="mm2bajadaSpooler1" disabled>
-                                            </div>
-                                        </div>
-                                        <div class="row">
-                                            <div class="col-2">
-                                                <small>Ancho(mm)</small>
-                                                <input type="number" class="form-control form-control-sm" id="anchoSpooler1" disabled>
-                                            </div>
-                                            <div class="col-2">
-                                                <small>KG Merma Bajada</small>
-                                                <input type="number" class="form-control form-control-sm" id="kgmermaSpooler1" disabled>
-                                            </div>
-                                            <div class="col-2">
-                                                <small>Peso Base</small>
-                                                <input type="number" class="form-control form-control-sm" id="pesobaseSpooler1" disabled>
-                                            </div>
-                                            <div class="col-2">
-                                                <br>
-                                                <button class="btn btn-primary btn-sm" id="btnSaveDataSpooler1"><i class="fas fa-save"></i> Guardar</button>
-                                            </div>
-                                        </div>
-                                        <div class="table-responsive my-2">
-                                            <table id="tblClaveSpooler1" class="table table-bordered">
-                                                <thead class="table-dark">
-                                                    <th># Bajada</th>
-                                                    <th># Bobinas</th>
-                                                    <th>KG Carretes Bajada</th>
-                                                    <th>ML Bajada</th>
-                                                    <th>MM2 Bajada</th>
-                                                    <th>Ancho(mm)</th>
-                                                    <th>KG Merma Bajada</th>
-                                                    <th>Peso Base(GSM)</th>
-                                                </thead>
-                                                <tbody id="tblClaveSubSpooler1">
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-                    </div> 
-                </div>
+<body class="p-4">
+<div class="container">
+
+<h4>Spooler - Simulación</h4>
+
+<!-- TABS -->
+<ul class="nav nav-tabs mb-3">
+  <li class="nav-item"><button class="nav-link active" onclick="setPresentacion(1)">Presentación 1</button></li>
+  <li class="nav-item"><button class="nav-link" onclick="setPresentacion(2)">Presentación 2</button></li>
+  <li class="nav-item"><button class="nav-link" onclick="setPresentacion(3)">Presentación 3</button></li>
+</ul>
+
+<div class="row">
+
+<!-- TABLA ROLLOS -->
+<div class="col-4">
+  <select class="form-control mb-2" onchange="setClave(this.value)">
+    <option value="A">Clave A</option>
+    <option value="B">Clave B</option>
+    <option value="C">Clave C</option>
+  </select>
+
+  <button class="btn btn-sm btn-primary mb-2" onclick="addRollo()">Agregar Rollo</button>
+
+  <table class="table table-bordered">
+    <thead class="table-dark">
+      <tr>
+        <th># Rollo</th>
+        <th>KG</th>
+        <th>ML</th>
+      </tr>
+    </thead>
+    <tbody id="tblRollos"></tbody>
+  </table>
+</div>
+
+<!-- FORM + HISTORICO -->
+<div class="col-8">
+
+<div class="card mb-2">
+<div class="card-body">
+
+<div class="row">
+  <div class="col-2">
+    <input id="bajada" class="form-control form-control-sm" placeholder="# Bajada">
+  </div>
+  <div class="col-2">
+    <input id="bobinas" type="number" class="form-control form-control-sm" placeholder="Bobinas">
+  </div>
+  <div class="col-2">
+    <input id="kg" class="form-control form-control-sm" disabled placeholder="KG">
+  </div>
+  <div class="col-2">
+    <input id="ml" class="form-control form-control-sm" disabled placeholder="ML">
+  </div>
+  <div class="col-2">
+    <button class="btn btn-success btn-sm" onclick="guardar()">Guardar</button>
+  </div>
+</div>
+
+</div>
+</div>
+
+<table class="table table-bordered">
+<thead class="table-dark">
+<tr>
+  <th>Bajada</th>
+  <th>Bobinas</th>
+  <th>KG</th>
+  <th>ML</th>
+</tr>
+</thead>
+<tbody id="tblHistorial"></tbody>
+</table>
+
+</div>
+</div>
+</div>
+
+<script>
+
+// ====== ESTADO ======
+const spoolers = {
+  1: crear(),
+  2: crear(),
+  3: crear()
+};
+
+let current = 1;
+
+function crear() {
+  return {
+    clave: 'A',
+    rollos: [],
+    historial: []
+  };
+}
+
+// ====== CAMBIOS ======
+function setPresentacion(n) {
+  current = n;
+
+  document.querySelectorAll('.nav-link').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.nav-link')[n-1].classList.add('active');
+
+  render();
+}
+
+function setClave(c) {
+  spoolers[current].clave = c;
+}
+
+// ====== ROLLOS ======
+function addRollo() {
+  spoolers[current].rollos.push({ rollo: '', kg: 0, ml: 0 });
+  renderRollos();
+}
+
+function updateRollo(i, field, val) {
+  spoolers[current].rollos[i][field] = Number(val);
+  calcularTotales();
+  renderRollos();
+}
+
+// ====== CALCULOS ======
+function calcularTotales() {
+  let kg = 0, ml = 0;
+
+  spoolers[current].rollos.forEach(r => {
+    kg += r.kg;
+    ml += r.ml;
+  });
+
+  document.getElementById("kg").value = kg;
+  document.getElementById("ml").value = ml;
+}
+
+// ====== GUARDAR ======
+function guardar() {
+  const p = spoolers[current];
+
+  const row = {
+    bajada: document.getElementById("bajada").value,
+    bobinas: document.getElementById("bobinas").value,
+    kg: document.getElementById("kg").value,
+    ml: document.getElementById("ml").value
+  };
+
+  p.historial.push(row);
+
+  // reset
+  p.rollos = [];
+  document.getElementById("bajada").value = "";
+  document.getElementById("bobinas").value = "";
+  document.getElementById("kg").value = "";
+  document.getElementById("ml").value = "";
+
+  render();
+}
+
+// ====== RENDER ======
+function render() {
+  renderRollos();
+  renderHistorial();
+}
+
+function renderRollos() {
+  const tbody = document.getElementById("tblRollos");
+  tbody.innerHTML = "";
+
+  spoolers[current].rollos.forEach((r,i) => {
+    tbody.innerHTML += `
+      <tr>
+        <td><input class="form-control" onchange="updateRollo(${i},'rollo',this.value)"></td>
+        <td><input type="number" class="form-control" onchange="updateRollo(${i},'kg',this.value)"></td>
+        <td><input type="number" class="form-control" onchange="updateRollo(${i},'ml',this.value)"></td>
+      </tr>
+    `;
+  });
+}
+
+function renderHistorial() {
+  const tbody = document.getElementById("tblHistorial");
+  tbody.innerHTML = "";
+
+  spoolers[current].historial.forEach(r => {
+    tbody.innerHTML += `
+      <tr>
+        <td>${r.bajada}</td>
+        <td>${r.bobinas}</td>
+        <td>${r.kg}</td>
+        <td>${r.ml}</td>
+      </tr>
+    `;
+  });
+}
+
+// init
+render();
+
+</script>
+
+</body>
+</html>
