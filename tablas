@@ -29,6 +29,7 @@
   <thead>
     <tr>
       <th>ID</th>
+      <th># Rollo</th>
       <th>Valor 1</th>
       <th>Valor 2</th>
     </tr>
@@ -127,7 +128,8 @@ function renderTabla1() {
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${row.id}</td>
-      <td><input type="number" value="${row.val1}" onchange="editar(${row.id}, 'val1', this.value)"></td>
+      <td><input type="number" value="${row.rollo || ''}" onchange="editarRollo(${row.id}, this.value)"></td>
+      <td>${row.val1}</td>
       <td><input type="number" value="${row.val2}" onchange="editar(${row.id}, 'val2', this.value)"></td>
     `;
     tbody.appendChild(tr);
@@ -137,10 +139,30 @@ function renderTabla1() {
   trTotal.classList.add("total");
   trTotal.innerHTML = `
     <td>TOTAL</td>
+    <td></td>
     <td>${total1}</td>
     <td>${total2}</td>
   `;
   tbody.appendChild(trTotal);
+}
+
+// catálogo simulado de rollos
+const catalogoRollos = {
+  1: 312,
+  2: 312,
+  3: 312
+};
+
+function editarRollo(id, rollo) {
+  const fila = tabla1.find(f => f.id === id);
+  if (!fila) return;
+
+  fila.rollo = Number(rollo);
+
+  // traer valor automáticamente
+  fila.val1 = catalogoRollos[rollo] || 0;
+
+  renderTabla1();
 }
 
 function editar(id, campo, valor) {
