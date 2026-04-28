@@ -1,40 +1,176 @@
-tblMXPRProduccionTNTEnc
+agregarBajadaRollo(idBitacora, clave, notbl, domtbl) {
+    console.log(domtbl);
+    Swal.fire({
+        title: "Rollo Maestro",
+        text: "¿Deseas agregar una nueva bajada?",
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonText: "Sí, agregar",
+        cancelButtonText: "Cancelar",
+        confirmButtonColor: "#28a745",
+        cancelButtonColor: "#d33",
+    }).then(async (result) => {
+        if (result.isConfirmed) {
+            // Limpiar tabla visualmente
+            document.getElementById(domtbl).innerHTML = "";
+            
+            // Guardar nuevo registro y obtener el nuevo ID
+            const nuevoId = await this.savePresentacionSpoolerYDevolverId(idBitacora, clave, notbl);
+            
+            if (nuevoId) {
+                // Recargar SOLO la tabla que corresponde a este nuevo ID
+                await this.cargarTablaPorId(nuevoId, notbl, domtbl);
+            }
+        }
+    });
+}
 
-idPT	folio	Clave	NoTabla
-1	123222	3421929	1
+async savePresentacionSpoolerYDevolverId(folio, presentacion, notbl) {
+    const data = new FormData();
+    data.append("folio", folio);
+    data.append("presentacion", presentacion);
+    data.append("turnoen", turnoen);
+    data.append("notbl", notbl);
+    
+    try {
+        const respuestaraw = await fetch(
+            "php/presentacion.php?savePresentacionSpooler",
+            {
+                method: "POST",
+                body: data,
+            }
+        );
+        
+        const respuesta = await respuestaraw.json();
+        
+        if (respuesta.status === 200 && respuesta.id) {
+            swal.fire("Listo", "La acción se completó correctamente", "success");
+            return respuesta.id; // Devolver el nuevo ID
+        } else {
+            swal.fire("ERROR", "Hay problema al guardar en la base de datos", "error");
+            return null;
+        }
+    } catch (error) {
+        console.error(error);
+        swal.fire("ERROR", "Error en la petición", "error");
+        return null;
+    }
+}
 
-tblMXPRProduccionTNTSpoolerUno
+async cargarTablaPorId(idPresentacionEnc, notbl, domtbl) {
+    const data = new FormData();
+    data.append("idPresentacionEnc", idPresentacionEnc);
+    data.append("notbl", notbl);
+    
+    const respuestaraw = await fetch(
+        "php/presentacion.php?getDataById",
+        {
+            method: "POST",
+            body: data,
+        }
+    );
+    const respuesta = await respuestaraw.json();
+    
+    if (respuesta && respuesta.rollos) {
+        this.renderizarTablaRollos(respuesta.rollos, respuesta.acckg, respuesta.accml, notbl, domtbl);
+    }
+}
 
-id	idPT	NoRollo	KGTotalRollo	AccKG	MetrosLineales	AccML
-1	1	0	0	0	0	0
-2	1	0	0	0	0	0
-3	1	0	0	0	0	0
-4	1	0	0	0	0	0
 
-tblMXPRProduccionTNTSpoolerDos
+async tblPresentacionSubSpooler(folio, notbl, domtbl, domtbl2, idFiltro = null) {
+    const data = new FormData();
+    data.append("folio", folio);
+    data.append("notbl", notbl);
+    if (idFiltro) {
+        data.append("idFiltro", idFiltro); // Para filtrar por ID específico
+    }
+    
+    const respuestaraw = await fetch(
+        "php/presentacion.php?tblPresentacionSubSpooler",
+        {
+            method: "POST",
+            body: data,
+        }
+    );
+    const respuesta = await respuestaraw.json();
+    
+    // Si es un filtro por ID (cuando viene de agregar bajada)
+    if (idFiltro && respuesta.length === 0) {
+        // Mostrar tabla vacía o con datos por defecto
+        document.getElementById(domtbl).innerHTML = this.getTablaVacia();
+        document.getElementById(domtbl2).innerHTML = this.getTablaBajadaVacia();
+        return;
+    }
+    
+    // Resto de tu lógica de procesamiento igual, pero SIN acumular variables entre llamadas
+    let acckg = 0;
+    let accml = 0;
+    let body = "";
+    let body2 = "";
+    let presentacion = "";
+    
+    respuesta.forEach((newelement) => {
+        acckg = Math.round((acckg + newelement.KGTotalRollo) * 1000) / 1000;
+        accml = Math.round((accml + newelement.MetrosLineales) * 1000) / 1000;
+        // ... resto de tu código igual
+    });
+    
+    // Renderizar...
+}
 
-id	idPT	NoBajada	bobinas	KgTotalesBajada	MLBajada	MMCBajada	KgMBajada	Comentarios
-1	1	0	6	0	0	0	318	
 
 
-Despues de agregar bajada
+function savePresentacionSpooler(){
+    $Conecta = new ClassConexion();
+    $conn = $Conecta->conexion("TLX004MXDB");
+    $folio = $_POST["folio"];
+    $presentacion = $_POST["presentacion"];
+    $notbl = $_POST["notbl"];
+    
+    $query = "INSERT INTO tblMXPRProduccionTNTEnc (folio,Clave, NoTabla) VALUES (?,?,?)";
+    $result = sqlsrv_query($conn, $query, array($folio, $presentacion, $notbl));
+    
+    if ($result === false) {
+        http_response_code(500);
+        echo json_encode(['status' => 500, 'error' => 'Error al insertar']);
+    } else {
+        $sql = "SELECT @@IDENTITY AS last_id";
+        $stmt = sqlsrv_query($conn, $sql);
+        $row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
+        $last_id = $row['last_id'];
+        
+        $insertOk = $this->InsertarDataSpooler($last_id);
+        
+        if ($insertOk) {
+            echo json_encode(['status' => 200, 'id' => $last_id]);
+        } else {
+            echo json_encode(['status' => 500, 'error' => 'Error en datos secundarios']);
+        }
+    }
+}
 
-tblMXPRProduccionTNTEnc
 
-idPT	folio	Clave	NoTabla
-1	123222	3421929	1
-2	123222	3421929	1 <- Nuevo
-
-tblMXPRProduccionTNTSpoolerUno
-
-id	idPT	NoRollo	KGTotalRollo	AccKG	MetrosLineales	AccML
-1	1	0	0	0	0	0
-2	1	0	0	0	0	0
-3	1	0	0	0	0	0
-4	1	0	0	0	0	0
-5	2	0	0	0	0	0 <- Nuevo
-tblMXPRProduccionTNTSpoolerDos
-
-id	idPT	NoBajada	bobinas	KgTotalesBajada	MLBajada	MMCBajada	KgMBajada	Comentarios
-1	1	0	6	0	0	0	318	
-2	2	0	6	0	0	0	0	<- Nuevo
+function getDataById() {
+    $Conecta = new ClassConexion();
+    $conn = $Conecta->conexion("TLX004MXDB");
+    $idPresentacionEnc = $_POST["idPresentacionEnc"];
+    
+    $query = "SELECT * FROM tblMXPRProduccionTNTSpoolerUno WHERE idPt = ?";
+    $stmt = sqlsrv_query($conn, $query, array($idPresentacionEnc));
+    
+    $rollos = [];
+    $acckg = 0;
+    $accml = 0;
+    
+    while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
+        $rollos[] = $row;
+        $acckg += $row['KGTotalRollo'];
+        $accml += $row['MetrosLineales'];
+    }
+    
+    echo json_encode([
+        'rollos' => $rollos,
+        'acckg' => $acckg,
+        'accml' => $accml
+    ]);
+}
