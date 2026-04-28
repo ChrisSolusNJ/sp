@@ -22,13 +22,19 @@ Despues de agregar bajada
 tblMXPRProduccionTNTEnc
 
 idPT	folio	Clave	NoTabla
-2	123222	3421929	1
+1	123222	3421929	1
+2	123222	3421929	1 <- Nuevo
 
 tblMXPRProduccionTNTSpoolerUno
 
 id	idPT	NoRollo	KGTotalRollo	AccKG	MetrosLineales	AccML
-5	2	0	0	0	0	0
+1	1	0	0	0	0	0
+2	1	0	0	0	0	0
+3	1	0	0	0	0	0
+4	1	0	0	0	0	0
+5	2	0	0	0	0	0 <- Nuevo
 tblMXPRProduccionTNTSpoolerDos
 
 id	idPT	NoBajada	bobinas	KgTotalesBajada	MLBajada	MMCBajada	KgMBajada	Comentarios
-2	2	0	6	0	0	0	318	
+1	1	0	6	0	0	0	318	
+2	2	0	6	0	0	0	0	<- Nuevo
