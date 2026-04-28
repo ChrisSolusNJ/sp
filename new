@@ -1,176 +1,92 @@
-agregarBajadaRollo(idBitacora, clave, notbl, domtbl) {
-    console.log(domtbl);
-    Swal.fire({
-        title: "Rollo Maestro",
-        text: "¿Deseas agregar una nueva bajada?",
-        icon: "question",
-        showCancelButton: true,
-        confirmButtonText: "Sí, agregar",
-        cancelButtonText: "Cancelar",
-        confirmButtonColor: "#28a745",
-        cancelButtonColor: "#d33",
-    }).then(async (result) => {
-        if (result.isConfirmed) {
-            // Limpiar tabla visualmente
-            document.getElementById(domtbl).innerHTML = "";
-            
-            // Guardar nuevo registro y obtener el nuevo ID
-            const nuevoId = await this.savePresentacionSpoolerYDevolverId(idBitacora, clave, notbl);
-            
-            if (nuevoId) {
-                // Recargar SOLO la tabla que corresponde a este nuevo ID
-                await this.cargarTablaPorId(nuevoId, notbl, domtbl);
-            }
-        }
-    });
-}
-
-async savePresentacionSpoolerYDevolverId(folio, presentacion, notbl) {
-    const data = new FormData();
-    data.append("folio", folio);
-    data.append("presentacion", presentacion);
-    data.append("turnoen", turnoen);
-    data.append("notbl", notbl);
-    
-    try {
+async savePresentacionSpooler(folio, presentacion, turnoen, notbl) {
+        const data = new FormData();
+        data.append("folio", folio);
+        data.append("presentacion", presentacion);
+        data.append("turnoen", turnoen);
+        data.append("notbl", notbl);
         const respuestaraw = await fetch(
-            "php/presentacion.php?savePresentacionSpooler",
-            {
-                method: "POST",
-                body: data,
-            }
+        "php/presentacion.php?savePresentacionSpooler",
+        {
+            method: "POST",
+            body: data,
+        },
         );
-        
-        const respuesta = await respuestaraw.json();
-        
-        if (respuesta.status === 200 && respuesta.id) {
-            swal.fire("Listo", "La acción se completó correctamente", "success");
-            return respuesta.id; // Devolver el nuevo ID
-        } else {
-            swal.fire("ERROR", "Hay problema al guardar en la base de datos", "error");
-            return null;
-        }
-    } catch (error) {
-        console.error(error);
-        swal.fire("ERROR", "Error en la petición", "error");
-        return null;
+        respuestaraw.status === 200 &&
+        swal.fire("Listo", "La acción se completo correctamente", "success");
+        tabla1  = [];
+        tabla1 = [{id: 1, NoRollo: 0, kg: 0, ml: 0}];
+        respuestaraw.status === 500 &&
+        swal.fire(
+            "ERROR",
+            "Hay problema al guardar en la base de datos",
+            "error",
+        );
     }
-}
 
-async cargarTablaPorId(idPresentacionEnc, notbl, domtbl) {
-    const data = new FormData();
-    data.append("idPresentacionEnc", idPresentacionEnc);
-    data.append("notbl", notbl);
-    
-    const respuestaraw = await fetch(
-        "php/presentacion.php?getDataById",
-        {
-            method: "POST",
-            body: data,
-        }
-    );
-    const respuesta = await respuestaraw.json();
-    
-    if (respuesta && respuesta.rollos) {
-        this.renderizarTablaRollos(respuesta.rollos, respuesta.acckg, respuesta.accml, notbl, domtbl);
+    renderTabla1(domtbl){
+        const tbody = document.getElementById(domtbl);
+        tbody.innerHTML = "";
+        let total1 = 0;
+        let total2 = 0;
+
+        tabla1.forEach((item) => {
+            total1 += item.kg;
+            total2 += item.ml;
+
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+                <td hidden>${item.id}</td>
+                <td contenteditable="true" class="editable" onblur="getCellValueRollos(this)"></td>
+                <td onchange="editar(${item.id}, 'kg', this, '${domtbl}')">${item.kg}</td>
+                <td contenteditable="true" class="editable" onblur="editar(${item.id}, 'ml', this, '${domtbl}')">${item.ml}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        const trTotal = document.createElement("tr");
+        trTotal.innerHTML = `
+            <td>Totla</td>
+            <td>${total1}</td>
+            <td>${total2}</td>
+        `;
+        tbody.appendChild(trTotal);
     }
-}
 
-
-async tblPresentacionSubSpooler(folio, notbl, domtbl, domtbl2, idFiltro = null) {
-    const data = new FormData();
-    data.append("folio", folio);
-    data.append("notbl", notbl);
-    if (idFiltro) {
-        data.append("idFiltro", idFiltro); // Para filtrar por ID específico
-    }
-    
-    const respuestaraw = await fetch(
-        "php/presentacion.php?tblPresentacionSubSpooler",
-        {
-            method: "POST",
-            body: data,
-        }
-    );
-    const respuesta = await respuestaraw.json();
-    
-    // Si es un filtro por ID (cuando viene de agregar bajada)
-    if (idFiltro && respuesta.length === 0) {
-        // Mostrar tabla vacía o con datos por defecto
-        document.getElementById(domtbl).innerHTML = this.getTablaVacia();
-        document.getElementById(domtbl2).innerHTML = this.getTablaBajadaVacia();
-        return;
-    }
-    
-    // Resto de tu lógica de procesamiento igual, pero SIN acumular variables entre llamadas
-    let acckg = 0;
-    let accml = 0;
-    let body = "";
-    let body2 = "";
-    let presentacion = "";
-    
-    respuesta.forEach((newelement) => {
-        acckg = Math.round((acckg + newelement.KGTotalRollo) * 1000) / 1000;
-        accml = Math.round((accml + newelement.MetrosLineales) * 1000) / 1000;
-        // ... resto de tu código igual
-    });
-    
-    // Renderizar...
-}
-
-
-
-function savePresentacionSpooler(){
-    $Conecta = new ClassConexion();
-    $conn = $Conecta->conexion("TLX004MXDB");
-    $folio = $_POST["folio"];
-    $presentacion = $_POST["presentacion"];
-    $notbl = $_POST["notbl"];
-    
-    $query = "INSERT INTO tblMXPRProduccionTNTEnc (folio,Clave, NoTabla) VALUES (?,?,?)";
-    $result = sqlsrv_query($conn, $query, array($folio, $presentacion, $notbl));
-    
-    if ($result === false) {
-        http_response_code(500);
-        echo json_encode(['status' => 500, 'error' => 'Error al insertar']);
-    } else {
-        $sql = "SELECT @@IDENTITY AS last_id";
-        $stmt = sqlsrv_query($conn, $sql);
-        $row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
-        $last_id = $row['last_id'];
-        
-        $insertOk = $this->InsertarDataSpooler($last_id);
-        
-        if ($insertOk) {
-            echo json_encode(['status' => 200, 'id' => $last_id]);
-        } else {
-            echo json_encode(['status' => 500, 'error' => 'Error en datos secundarios']);
+    async getCellValueRollos(cell) {
+        const folio = document.getElementById("folio").value;
+        // Obtener el valor ingresado (número de rollo)
+        const rolloNumber = cell.innerText.trim();
+        // Validar que no esté vacío
+        if (!rolloNumber) return;
+        // Obtener la fila (tr) a la que pertenece esta celda
+        const row = cell.closest('tr');
+        // Obtener el ID del registro (data-id de la fila)
+        const recordId = row.getAttribute('data-id');
+        const cells = row.querySelectorAll("td");
+        // Crear FormData para la petición
+        const data = new FormData();
+        data.append("rollo", rolloNumber);
+        try {
+            // Realizar la petición al servidor para buscar el rollo
+            const response = await fetch("php/presentacion.php?buscarRollo", {
+                method: "POST",
+                body: data
+            });
+            const result = await response.json();
+            if (result.success && result.data) {
+                // Actualizar la celda de KG (segunda celda de la fila, índice 1)
+                const kgCell = row.cells[2]; // La celda de KG está en el índice 1
+                kgCell.innerText = result.data[0].PesoTotal; 
+            } else {
+                console.log(`Rollo ${rolloNumber} no encontrado`);
+            }
+        } catch (error) {
+            console.error("Error al buscar el rollo:", error);
         }
     }
-}
 
-
-function getDataById() {
-    $Conecta = new ClassConexion();
-    $conn = $Conecta->conexion("TLX004MXDB");
-    $idPresentacionEnc = $_POST["idPresentacionEnc"];
-    
-    $query = "SELECT * FROM tblMXPRProduccionTNTSpoolerUno WHERE idPt = ?";
-    $stmt = sqlsrv_query($conn, $query, array($idPresentacionEnc));
-    
-    $rollos = [];
-    $acckg = 0;
-    $accml = 0;
-    
-    while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
-        $rollos[] = $row;
-        $acckg += $row['KGTotalRollo'];
-        $accml += $row['MetrosLineales'];
-    }
-    
-    echo json_encode([
-        'rollos' => $rollos,
-        'acckg' => $acckg,
-        'accml' => $accml
-    ]);
-}
+    editar(id, campo, cell, domtbl) {
+        const valor = cell.innerText.trim();
+        const fila = tabla1.find(f => f.id === id);
+        if (fila) fila[campo] = parseFloat(valor);
+        rend
