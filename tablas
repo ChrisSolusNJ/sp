@@ -2,14 +2,14 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Spooler Demo</title>
+<title>Spooler Simulación</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 
 <body class="p-4">
 <div class="container">
 
-<h4>Spooler - Simulación</h4>
+<h4>Spooler - Simulación Completa</h4>
 
 <!-- TABS -->
 <ul class="nav nav-tabs mb-3">
@@ -20,29 +20,31 @@
 
 <div class="row">
 
-<!-- TABLA ROLLOS -->
+<!-- IZQUIERDA -->
 <div class="col-4">
-  <select class="form-control mb-2" onchange="setClave(this.value)">
-    <option value="A">Clave A</option>
-    <option value="B">Clave B</option>
-    <option value="C">Clave C</option>
-  </select>
 
-  <button class="btn btn-sm btn-primary mb-2" onclick="addRollo()">Agregar Rollo</button>
+<select class="form-control mb-2" onchange="setClave(this.value)">
+  <option value="A">Clave A</option>
+  <option value="B">Clave B</option>
+  <option value="C">Clave C</option>
+</select>
 
-  <table class="table table-bordered">
-    <thead class="table-dark">
-      <tr>
-        <th># Rollo</th>
-        <th>KG</th>
-        <th>ML</th>
-      </tr>
-    </thead>
-    <tbody id="tblRollos"></tbody>
-  </table>
+<button class="btn btn-primary btn-sm mb-2" onclick="addRollo()">Agregar Rollo</button>
+
+<table class="table table-bordered">
+<thead class="table-dark">
+<tr>
+  <th># Rollo</th>
+  <th>KG</th>
+  <th>ML</th>
+</tr>
+</thead>
+<tbody id="tblRollos"></tbody>
+</table>
+
 </div>
 
-<!-- FORM + HISTORICO -->
+<!-- DERECHA -->
 <div class="col-8">
 
 <div class="card mb-2">
@@ -87,7 +89,7 @@
 
 <script>
 
-// ====== ESTADO ======
+// ===== ESTADO =====
 const spoolers = {
   1: crear(),
   2: crear(),
@@ -104,7 +106,7 @@ function crear() {
   };
 }
 
-// ====== CAMBIOS ======
+// ===== CAMBIOS =====
 function setPresentacion(n) {
   current = n;
 
@@ -118,40 +120,34 @@ function setClave(c) {
   spoolers[current].clave = c;
 }
 
-// ====== ROLLOS ======
+// ===== ROLLOS =====
 function addRollo() {
-  spoolers[current].rollos.push({ rollo: '', kg: 0, ml: 0 });
+  spoolers[current].rollos.push({ rollo:'', kg:0, ml:0 });
   renderRollos();
 }
 
 function updateRollo(i, field, val) {
   spoolers[current].rollos[i][field] = Number(val);
-  calcularTotales();
   renderRollos();
 }
 
-// ====== CALCULOS ======
-function calcularTotales() {
-  let kg = 0, ml = 0;
-
-  spoolers[current].rollos.forEach(r => {
-    kg += r.kg;
-    ml += r.ml;
-  });
-
-  document.getElementById("kg").value = kg;
-  document.getElementById("ml").value = ml;
-}
-
-// ====== GUARDAR ======
+// ===== GUARDAR =====
 function guardar() {
   const p = spoolers[current];
+
+  let totalKg = 0;
+  let totalMl = 0;
+
+  p.rollos.forEach(r => {
+    totalKg += Number(r.kg || 0);
+    totalMl += Number(r.ml || 0);
+  });
 
   const row = {
     bajada: document.getElementById("bajada").value,
     bobinas: document.getElementById("bobinas").value,
-    kg: document.getElementById("kg").value,
-    ml: document.getElementById("ml").value
+    kg: totalKg,
+    ml: totalMl
   };
 
   p.historial.push(row);
@@ -166,7 +162,7 @@ function guardar() {
   render();
 }
 
-// ====== RENDER ======
+// ===== RENDER =====
 function render() {
   renderRollos();
   renderHistorial();
@@ -176,15 +172,34 @@ function renderRollos() {
   const tbody = document.getElementById("tblRollos");
   tbody.innerHTML = "";
 
+  let totalKg = 0;
+  let totalMl = 0;
+
   spoolers[current].rollos.forEach((r,i) => {
+    totalKg += Number(r.kg || 0);
+    totalMl += Number(r.ml || 0);
+
     tbody.innerHTML += `
       <tr>
-        <td><input class="form-control" onchange="updateRollo(${i},'rollo',this.value)"></td>
-        <td><input type="number" class="form-control" onchange="updateRollo(${i},'kg',this.value)"></td>
-        <td><input type="number" class="form-control" onchange="updateRollo(${i},'ml',this.value)"></td>
+        <td><input class="form-control" value="${r.rollo || ''}" onchange="updateRollo(${i},'rollo',this.value)"></td>
+        <td><input type="number" class="form-control" value="${r.kg || ''}" onchange="updateRollo(${i},'kg',this.value)"></td>
+        <td><input type="number" class="form-control" value="${r.ml || ''}" onchange="updateRollo(${i},'ml',this.value)"></td>
       </tr>
     `;
   });
+
+  // 🔥 FILA TOTAL
+  tbody.innerHTML += `
+    <tr class="table-secondary fw-bold">
+      <td>TOTAL</td>
+      <td>${totalKg}</td>
+      <td>${totalMl}</td>
+    </tr>
+  `;
+
+  // actualizar inputs
+  document.getElementById("kg").value = totalKg;
+  document.getElementById("ml").value = totalMl;
 }
 
 function renderHistorial() {
