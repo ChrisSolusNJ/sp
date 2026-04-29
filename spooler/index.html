@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Spooler</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+
+<body class="p-4">
+<div class="container">
+
+<h4>Spooler</h4>
+
+<ul class="nav nav-tabs mb-3">
+  <li class="nav-item"><button class="nav-link active" onclick="setPresentacion(1)">P1</button></li>
+  <li class="nav-item"><button class="nav-link" onclick="setPresentacion(2)">P2</button></li>
+  <li class="nav-item"><button class="nav-link" onclick="setPresentacion(3)">P3</button></li>
+</ul>
+
+<select id="selectorClave" class="form-control mb-2" onchange="setClave(this.value)"></select>
+
+<button class="btn btn-success mb-2" onclick="iniciarProceso()">▶</button>
+
+<div id="zonaTrabajo" style="display:none;">
+
+<button class="btn btn-primary mb-2" onclick="addRollo()">Agregar Rollo</button>
+
+<table class="table table-bordered">
+<thead><tr><th>#Rollo</th><th>KG</th><th>ML</th></tr></thead>
+<tbody id="tblRollos"></tbody>
+</table>
+
+<div class="row mb-2">
+<input id="bajada" placeholder="Bajada" class="col-2">
+<input id="bobinas" placeholder="Bobinas" class="col-2">
+<input id="pesoBase" disabled class="col-2">
+<input id="ancho" disabled class="col-2">
+<button onclick="guardar()" class="col-2 btn btn-success">Guardar</button>
+</div>
+
+<h5>Histórico</h5>
+<table class="table table-bordered">
+<thead>
+<tr>
+<th>Bajada</th>
+<th>Bobinas</th>
+<th>KG</th>
+<th>ML</th>
+</tr>
+</thead>
+<tbody id="tblHistorial"></tbody>
+</table>
+
+</div>
+
+</div>
+
+<script>
+
+const spoolers = {1:crear(),2:crear(),3:crear()};
+let current=1;
+
+function crear(){
+  return {
+    clave:null,
+    pesoBase:0,
+    ancho:0,
+    rollos:[],
+    historial:[],
+    iniciado:false,
+    idEnc:null
+  };
+}
+
+// ===== PRESENTACION =====
+function setPresentacion(n){
+  current=n;
+
+  document.querySelectorAll('.nav-link').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.nav-link')[n-1].classList.add('active');
+
+  const p=spoolers[n];
+
+  document.getElementById("selectorClave").value=p.clave||"";
+  document.getElementById("pesoBase").value=p.pesoBase;
+  document.getElementById("ancho").value=p.ancho;
+
+  document.getElementById("selectorClave").disabled=p.iniciado;
+  document.getElementById("zonaTrabajo").style.display=p.iniciado?"block":"none";
+
+  render();
+}
+
+// ===== CLAVE =====
+async function setClave(c){
+  const p=spoolers[current];
+  p.clave=c;
+
+  const r=await fetch("php/getClave.php?id="+c);
+  const d=await r.json();
+
+  p.pesoBase=d.pesoBase;
+  p.ancho=d.ancho;
+
+  document.getElementById("pesoBase").value=d.pesoBase;
+  document.getElementById("ancho").value=d.ancho;
+}
+
+// ===== PLAY =====
+async function iniciarProceso(){
+  const p=spoolers[current];
+
+  if(!p.clave){
+    alert("Selecciona clave");
+    return;
+  }
+
+  const r=await fetch("php/createEnc.php",{
+    method:"POST",
+    body:new URLSearchParams({clave:p.clave})
+  });
+
+  const d=await r.json();
+
+  p.idEnc=d.idEnc;
+  p.iniciado=true;
+
+  document.getElementById("selectorClave").disabled=true;
+  document.getElementById("zonaTrabajo").style.display="block";
+
+  p.rollos=[{rollo:"",kg:0,ml:0}];
+
+  render();
+}
+
+// ===== ROLLOS =====
+function addRollo(){
+  spoolers[current].rollos.push({rollo:"",kg:0,ml:0});
+  render();
+}
+
+async function updateRollo(i,val){
+  const p=spoolers[current];
+
+  const r=await fetch("php/getRollo.php?id="+val);
+  const d=await r.json();
+
+  p.rollos[i].rollo=val;
+  p.rollos[i].kg=d.kg;
+
+  render();
+}
+
+function updateML(i,val){
+  spoolers[current].rollos[i].ml = Number(val);
+  render();
+}
+
+// ===== GUARDAR =====
+async function guardar(){
+  const p = spoolers[current];
+
+  let kg = 0, ml = 0;
+
+  p.rollos.forEach(r=>{
+    kg += Number(r.kg || 0);
+    ml += Number(r.ml || 0);
+  });
+
+  await fetch("php/procesar.php",{
+    method:"POST",
+    body:new URLSearchParams({
+      idEnc: p.idEnc,
+      accKG: kg,
+      accML: ml,
+      NoBajada: document.getElementById("bajada").value,
+      NoBobinas: document.getElementById("bobinas").value
+    })
+  });
+
+  // histórico
+  p.historial.push({
+    bajada: document.getElementById("bajada").value,
+    bobinas: document.getElementById("bobinas").value,
+    kg,
+    ml
+  });
+
+  // nuevo ciclo
+  await iniciarProceso();
+
+  // reset parcial
+  p.rollos = [{rollo:"",kg:0,ml:0}];
+
+  document.getElementById("bajada").value = "";
+  document.getElementById("bobinas").value = "";
+
+  render();
+}
+
+// ===== RENDER =====
+function render(){
+  renderRollos();
+  renderHistorial();
+}
+
+function renderRollos(){
+  const p=spoolers[current];
+  let html="",kg=0,ml=0;
+
+  p.rollos.forEach((r,i)=>{
+    kg+=Number(r.kg||0);
+    ml+=Number(r.ml||0);
+
+    html+=`
+    <tr>
+      <td><input value="${r.rollo||''}" onchange="updateRollo(${i},this.value)"></td>
+      <td>${r.kg}</td>
+      <td><input value="${r.ml||''}" onchange="updateML(${i},this.value)"></td>
+    </tr>`;
+  });
+
+  html+=`<tr class="table-secondary">
+  <td>TOTAL</td>
+  <td>${kg}</td>
+  <td>${ml}</td>
+  </tr>`;
+
+  document.getElementById("tblRollos").innerHTML=html;
+}
+
+function renderHistorial(){
+  const p=spoolers[current];
+  let html="";
+
+  p.historial.forEach(r=>{
+    html+=`
+    <tr>
+      <td>${r.bajada}</td>
+      <td>${r.bobinas}</td>
+      <td>${r.kg}</td>
+      <td>${r.ml}</td>
+    </tr>`;
+  });
+
+  document.getElementById("tblHistorial").innerHTML=html;
+}
+
+// ===== INIT =====
+fetch("php/getClaves.php")
+.then(r=>r.json())
+.then(data=>{
+  const s=document.getElementById("selectorClave");
+  s.innerHTML='<option value="">Selecciona</option>';
+  data.forEach(c=>{
+    s.innerHTML+=`<option value="${c.id}">${c.NoClave}</option>`;
+  });
+});
+
+</script>
+</body>
+</html>
